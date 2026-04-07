@@ -23,15 +23,25 @@ from app.settings import get_settings
 
 logger = logging.getLogger(__name__)
 
-# Imported at module level so tests can patch app.services.ai_explanation.vertexai
-# and app.services.ai_explanation.GenerativeModel.  The try/except means the rest
-# of the app still works when google-cloud-aiplatform is not installed.
-try:
-    import vertexai
-    from vertexai.generative_models import GenerationConfig, GenerativeModel
-    _VERTEXAI_AVAILABLE = True
-except ImportError:  # pragma: no cover
-    _VERTEXAI_AVAILABLE = False
+# vertexai is loaded lazily on first AI call via _ensure_vertexai().
+# Module-level stubs (None) keep the names patchable in tests without
+# triggering the actual import (which adds 100+ seconds on cold-start).
+vertexai = None
+GenerativeModel = None
+
+
+def _ensure_vertexai() -> None:
+    """Import vertexai on first use. No-op on subsequent calls."""
+    global vertexai, GenerativeModel
+    if vertexai is not None:
+        return
+    try:
+        import vertexai as _vtx
+        from vertexai.generative_models import GenerativeModel as _GM
+        vertexai = _vtx
+        GenerativeModel = _GM
+    except ImportError as exc:  # pragma: no cover
+        raise RuntimeError("google-cloud-aiplatform is not installed") from exc
 
 
 # ─── Input / output types ─────────────────────────────────────────────────────
@@ -130,6 +140,7 @@ def _template_explanation(ctx: ExplanationContext) -> ExplanationResult:
 
 def _vertex_generate(ctx: ExplanationContext) -> ExplanationResult:
     """Call Vertex AI Gemini.  Raises on any failure — caller handles fallback."""
+    _ensure_vertexai()
     settings = get_settings()
 
     vertexai.init(
@@ -141,9 +152,9 @@ def _vertex_generate(ctx: ExplanationContext) -> ExplanationResult:
     prompt = _build_prompt(ctx)
     response = model.generate_content(
         prompt,
-        generation_config=GenerationConfig(
+        generation_config=vertexai.generative_models.GenerationConfig(
             temperature=0.4,      # slightly creative but mostly factual
-            max_output_tokens=220,
+            max_output_tokens=4096,
             candidate_count=1,
         ),
     )

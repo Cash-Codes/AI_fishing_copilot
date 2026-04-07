@@ -1,20 +1,24 @@
 # routers/recommend.py — The main AI recommendation endpoint.
 #
-# POST /recommend receives the user's postcode + preferences and returns
-# a fishing recommendation with the *nearest real harbour* to their location.
+# POST /recommend accepts a location (postcode or place name) and returns
+# a fishing recommendation for the harbour that best matches the user's
+# stated preference.
 #
 # Resolution flow:
-#   1. Resolve postcode → (lat, lon) via local seed map or postcodes.io API.
-#   2. Find nearest harbour using Haversine distance.
-#   3. If postcode is unknown, fall back to the default harbour and set
-#      used_fallback=True so the client can show a notice.
-#
-# TODO: Replace the mock explanation with real AI logic:
-#   1. Query the FAISS vector store for relevant fishing notes.
-#   2. Call the Vertex AI / Gemini model with the notes as context.
-#   3. Parse and return the model's structured response.
+#   1. Resolve location → (lat, lon) via postcodes.io or Nominatim.
+#   2. Find the 5 nearest harbours from Overpass/OSM (+ local fallback).
+#   3. Fetch live conditions for every candidate in parallel.
+#   4. Select the best harbour for the user's preference:
+#        closest           → nearest by distance
+#        calmer-conditions → calmest sea/wind
+#        best-chance       → species season match + tidal quality
+#   5. If location is unknown, fall back to the default harbour.
+#   6. Score the selected harbour → confidence score.
+#   7. Retrieve relevant corpus notes via FAISS / keyword search.
+#   8. Generate an AI explanation (Vertex AI Gemini, or template fallback).
 
 import logging
+from concurrent.futures import ThreadPoolExecutor
 
 from fastapi import APIRouter
 
@@ -23,13 +27,15 @@ from app.models.response import RecommendResponse
 from app.retrieval.retriever import get_retriever
 from app.services.ai_explanation import ExplanationContext, generate_explanation
 from app.services.conditions import get_conditions
-from app.services.harbour import default_harbour, nearest_harbour
-from app.services.postcode import resolve_postcode
-from app.services.scoring import score_recommendation
+from app.services.geocoding import resolve_location
+from app.services.harbour import MAX_USEFUL_DISTANCE_KM, default_harbour, nearest_harbours
+from app.services.scoring import score_recommendation, select_harbour
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["Recommend"])
+
+_NUM_CANDIDATES = 5   # how many nearby harbours to evaluate per request
 
 
 @router.post(
@@ -37,51 +43,86 @@ router = APIRouter(tags=["Recommend"])
     response_model=RecommendResponse,
     summary="Get a fishing recommendation",
     description=(
-        "Accepts a postcode and optional preferences, "
-        "then returns the nearest harbour, best time window, "
-        "and an AI-generated explanation."
+        "Accepts a postcode or place name and optional preferences, "
+        "then returns the best harbour for the user's stated preference, "
+        "with a tidal window and an AI-generated explanation."
     ),
 )
 def get_recommendation(body: RecommendRequest) -> RecommendResponse:
-    """
-    Core recommendation endpoint.
-
-    FastAPI automatically:
-      - Reads the JSON body and validates it against RecommendRequest.
-      - Returns HTTP 422 if validation fails (e.g. postcode too short).
-      - Serialises our return value to JSON using RecommendResponse.
-    """
     logger.info(
-        "Recommendation requested | postcode=%s | species=%s | preference=%s",
-        body.postcode,
+        "Recommendation requested | location=%s | species=%s | preference=%s",
+        body.location,
         body.species,
         body.preference,
     )
 
-    # ── Step 1: resolve postcode ───────────────────────────────────────────────
-    coords = resolve_postcode(body.postcode)
+    # ── Step 1: resolve location ───────────────────────────────────────────────
+    coords = resolve_location(body.location)
     used_fallback = coords is None
 
     if coords is not None:
         lat, lon = coords
-        harbour, distance_km = nearest_harbour(lat, lon)
+
+        # ── Step 2: find N nearest candidates ─────────────────────────────────
+        candidates, out_of_range = nearest_harbours(lat, lon, n=_NUM_CANDIDATES)
         logger.info(
-            "Nearest harbour: %s (%.1f km from %s)",
-            harbour.name,
-            distance_km,
-            body.postcode,
+            "Candidates for %s: %s",
+            body.location,
+            ", ".join(f"{h.name} ({d:.0f} km)" for h, d in candidates),
         )
+
+        # When the location is outside coverage, return immediately with a
+        # helpful message rather than silently recommending a harbour thousands
+        # of km away.
+        if out_of_range:
+            logger.warning(
+                "Location %r is out of range (nearest harbour %.0f km) — returning early",
+                body.location, candidates[0][1],
+            )
+            retriever = get_retriever()
+            return RecommendResponse(
+                input_location=body.location,
+                nearest_harbour=candidates[0][0].name,
+                recommendation_window="N/A — outside coverage",
+                confidence_score=0.0,
+                explanation=(
+                    f"No coastal fishing harbours were found within "
+                    f"{MAX_USEFUL_DISTANCE_KM:.0f} km of '{body.location}'. "
+                    f"This service covers sea fishing — try a UK coastal town, "
+                    f"harbour name, or postcode (e.g. 'Falmouth', 'TR11 3JT')."
+                ),
+                used_fallback=True,
+                out_of_range=True,
+                retrieved_notes=[],
+                retrieval_method=retriever.retrieval_method,
+            )
+
+        # ── Step 3: fetch conditions in parallel ───────────────────────────────
+        with ThreadPoolExecutor(max_workers=_NUM_CANDIDATES) as pool:
+            all_conditions = list(pool.map(
+                lambda hd: get_conditions(hd[0]),
+                candidates,
+            ))
+
+        # ── Step 4: select best harbour for the preference ────────────────────
+        best_idx = select_harbour(
+            candidates,
+            all_conditions,
+            species=body.species,
+            preference=body.preference,
+        )
+        harbour, distance_km = candidates[best_idx]
+        conditions = all_conditions[best_idx]
+
     else:
         logger.warning(
-            "Could not resolve postcode %s — using default harbour",
-            body.postcode,
+            "Could not resolve location %r — using default harbour",
+            body.location,
         )
         harbour, distance_km = default_harbour()
+        conditions = get_conditions(harbour)
 
-    # ── Step 2: fetch live conditions (weather + tides) ───────────────────────
-    conditions = get_conditions(harbour)
-
-    # ── Step 3: score the recommendation ──────────────────────────────────────
+    # ── Step 5: score the recommendation ──────────────────────────────────────
     score = score_recommendation(
         distance_km=distance_km,
         harbour=harbour,
@@ -97,23 +138,55 @@ def get_recommendation(body: RecommendRequest) -> RecommendResponse:
         score.confidence_score,
     )
 
-    # ── Step 4: retrieve relevant corpus notes ────────────────────────────────
-    # Build a natural-language query from the request context so the retriever
-    # can find the most relevant guidance snippets.
-    retrieval_query = " ".join(filter(None, [
-        body.species,
-        harbour.name,
-        conditions.tide_phase,
-        conditions.spring_or_neap,
-        body.preference,
-        "fishing",
-    ]))
-    retrieved_notes = get_retriever().retrieve_text(retrieval_query, top_k=3)
-    logger.info("Retrieved %d notes for query: %r", len(retrieved_notes), retrieval_query)
+    # ── Step 6: retrieve relevant corpus notes ────────────────────────────────
+    # Two-stage retrieval: species-filtered notes (when a species is given) plus
+    # a general tidal/conditions note, then deduplicate.  This mirrors production
+    # RAG systems that use metadata filtering to pre-restrict the candidate pool
+    # before semantic search.
+    retriever = get_retriever()
 
-    # ── Step 5: generate AI explanation ──────────────────────────────────────
+    if body.species:
+        # Stage 1: species-specific notes, filtered to species_activity topic
+        species_notes = retriever.retrieve_text(
+            f"{body.species} feeding season habitat behaviour",
+            top_k=2,
+            filter_topic="species_activity",
+        )
+        # Stage 2: tidal/conditions context from full corpus
+        tidal_query = " ".join(filter(None, [
+            conditions.tide_phase, conditions.spring_or_neap,
+            harbour.name, "fishing",
+        ]))
+        tidal_notes = retriever.retrieve_text(tidal_query, top_k=2)
+        # Deduplicate while preserving order (species notes first)
+        seen: set = set()
+        retrieved_notes = []
+        for note in species_notes + tidal_notes:
+            if note not in seen:
+                seen.add(note)
+                retrieved_notes.append(note)
+        retrieved_notes = retrieved_notes[:3]
+    else:
+        # No species: single-stage retrieval across full corpus
+        retrieval_query = " ".join(filter(None, [
+            harbour.name,
+            conditions.tide_phase,
+            conditions.spring_or_neap,
+            body.preference,
+            "fishing",
+        ]))
+        retrieved_notes = retriever.retrieve_text(retrieval_query, top_k=3)
+
+    logger.info(
+        "Retrieved %d notes | method=%s | species_filter=%s",
+        len(retrieved_notes),
+        retriever.retrieval_method,
+        "species_activity" if body.species else "none",
+    )
+
+    # ── Step 7: generate AI explanation ───────────────────────────────────────
     ai_ctx = ExplanationContext(
-        postcode=body.postcode,
+        postcode=body.location,
         species=body.species,
         preference=body.preference,
         harbour_name=harbour.name,
@@ -126,21 +199,21 @@ def get_recommendation(body: RecommendRequest) -> RecommendResponse:
     )
     ai_result = generate_explanation(ai_ctx)
 
-    # used_fallback is True if either the postcode lookup OR the AI call fell back
     final_fallback = used_fallback or not ai_result.used_ai
     logger.info(
         "Explanation | used_ai=%s | fallback=%s", ai_result.used_ai, final_fallback
     )
 
     return RecommendResponse(
-        input_postcode=body.postcode,
+        input_location=body.location,
         nearest_harbour=harbour.name,
         recommendation_window=conditions.recommended_time_window,
         confidence_score=score.confidence_score,
         explanation=ai_result.text,
         used_fallback=final_fallback,
+        out_of_range=False,
         retrieved_notes=retrieved_notes,
-        # Conditions fields
+        retrieval_method=retriever.retrieval_method,
         wind_speed_knots=conditions.wind_speed_knots,
         wind_direction=conditions.wind_direction,
         wind_description=conditions.wind_description,

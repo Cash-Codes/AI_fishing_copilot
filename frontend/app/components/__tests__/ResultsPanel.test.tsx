@@ -6,7 +6,7 @@
  * make assertions. No mocking needed.
  */
 
-import { render, screen, within } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 
 import ResultsPanel from "../ResultsPanel";
 import type { RecommendResponse } from "@/lib/api";
@@ -15,7 +15,7 @@ import type { RecommendResponse } from "@/lib/api";
 
 /** A fully-populated result for the happy-path tests. */
 const BASE_RESULT: RecommendResponse = {
-  input_postcode: "TR1 1AA",
+  input_location: "TR1 1AA",
   nearest_harbour: "Falmouth Harbour",
   recommendation_window: "Saturday 06:00 – 10:00",
   confidence_score: 0.82,
@@ -44,28 +44,31 @@ describe("ResultsPanel", () => {
       expect(screen.getByText("82%")).toBeInTheDocument();
     });
 
-    it("shows 'No' for fallback mode when used_fallback is false", () => {
-      render(<ResultsPanel result={BASE_RESULT} />);
-      expect(screen.getByText("No")).toBeInTheDocument();
+    it("shows the fallback badge when used_fallback is true", () => {
+      render(<ResultsPanel result={{ ...BASE_RESULT, used_fallback: true }} />);
+      expect(screen.getByText("Template mode")).toBeInTheDocument();
     });
 
-    it("shows 'Yes — limited data' and the fallback badge when used_fallback is true", () => {
+    it("shows a fallback notice when used_fallback is true", () => {
       render(<ResultsPanel result={{ ...BASE_RESULT, used_fallback: true }} />);
-      expect(screen.getByText("Yes — limited data")).toBeInTheDocument();
-      expect(screen.getByText("Fallback mode")).toBeInTheDocument();
+      expect(screen.getByRole("note")).toBeInTheDocument();
     });
 
     it("does not render the fallback badge when used_fallback is false", () => {
       render(<ResultsPanel result={BASE_RESULT} />);
-      expect(screen.queryByText("Fallback mode")).not.toBeInTheDocument();
+      expect(screen.queryByText("Template mode")).not.toBeInTheDocument();
+    });
+
+    it("does not render the fallback notice when used_fallback is false", () => {
+      render(<ResultsPanel result={BASE_RESULT} />);
+      expect(screen.queryByRole("note")).not.toBeInTheDocument();
     });
   });
 
-  describe("confidence accent colour", () => {
+  describe("confidence gauge", () => {
     it("uses the teal accent colour for a high score (≥75%)", () => {
       render(<ResultsPanel result={{ ...BASE_RESULT, confidence_score: 0.9 }} />);
       const value = screen.getByText("90%");
-      // Inline style is set directly on the element.
       expect(value).toHaveStyle({ color: "var(--accent)" });
     });
 
@@ -78,6 +81,12 @@ describe("ResultsPanel", () => {
       render(<ResultsPanel result={{ ...BASE_RESULT, confidence_score: 0.2 }} />);
       expect(screen.getByText("20%")).toHaveStyle({ color: "#ef4444" });
     });
+
+    it("renders a meter element for the gauge", () => {
+      render(<ResultsPanel result={BASE_RESULT} />);
+      const meter = screen.getByRole("meter");
+      expect(meter).toHaveAttribute("aria-valuenow", "82");
+    });
   });
 
   describe("AI explanation", () => {
@@ -85,10 +94,20 @@ describe("ResultsPanel", () => {
       render(<ResultsPanel result={BASE_RESULT} />);
       expect(screen.getByText("Tidal flow peaks Saturday morning.")).toBeInTheDocument();
     });
+
+    it("labels the explanation as AI when used_fallback is false", () => {
+      render(<ResultsPanel result={BASE_RESULT} />);
+      expect(screen.getByText("AI recommendation")).toBeInTheDocument();
+    });
+
+    it("labels the explanation as template when used_fallback is true", () => {
+      render(<ResultsPanel result={{ ...BASE_RESULT, used_fallback: true }} />);
+      expect(screen.getByText("Template recommendation")).toBeInTheDocument();
+    });
   });
 
   describe("retrieved notes", () => {
-    it("renders each note as a list item", () => {
+    it("renders each note", () => {
       render(<ResultsPanel result={BASE_RESULT} />);
       expect(screen.getByText("Spring tide Saturday.")).toBeInTheDocument();
       expect(screen.getByText("SW wind 12 knots.")).toBeInTheDocument();
@@ -96,15 +115,40 @@ describe("ResultsPanel", () => {
 
     it("renders the correct number of notes", () => {
       render(<ResultsPanel result={BASE_RESULT} />);
-      // Find the notes list by its label text, then count the list items within it.
-      const section = screen.getByText("RETRIEVED NOTES").closest("div")!;
-      const items = within(section).getAllByRole("listitem");
-      expect(items).toHaveLength(2);
+      // Count the note index markers — one per note card (#1, #2, …)
+      expect(screen.getByText("#1")).toBeInTheDocument();
+      expect(screen.getByText("#2")).toBeInTheDocument();
+    });
+
+    it("shows the note count in the section header", () => {
+      render(<ResultsPanel result={BASE_RESULT} />);
+      expect(screen.getByText(/2 relevant notes/)).toBeInTheDocument();
     });
 
     it("hides the notes section when retrieved_notes is empty", () => {
       render(<ResultsPanel result={{ ...BASE_RESULT, retrieved_notes: [] }} />);
-      expect(screen.queryByText("RETRIEVED NOTES")).not.toBeInTheDocument();
+      expect(screen.queryByText(/Knowledge base/)).not.toBeInTheDocument();
+    });
+  });
+
+  describe("conditions strip", () => {
+    it("renders wind conditions when present", () => {
+      render(
+        <ResultsPanel
+          result={{
+            ...BASE_RESULT,
+            wind_description: "Moderate breeze",
+            wind_speed_knots: 14,
+            wind_direction: "SW",
+          }}
+        />
+      );
+      expect(screen.getByLabelText("Current conditions")).toBeInTheDocument();
+    });
+
+    it("does not render the conditions strip when no conditions are present", () => {
+      render(<ResultsPanel result={BASE_RESULT} />);
+      expect(screen.queryByLabelText("Current conditions")).not.toBeInTheDocument();
     });
   });
 });

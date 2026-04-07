@@ -1,9 +1,4 @@
 # models/request.py — Defines the shape of data the API *receives*.
-#
-# Pydantic models act like strict blueprints:
-# - FastAPI automatically validates incoming JSON against them.
-# - If a required field is missing or the wrong type, FastAPI returns a
-#   clear 422 error before our code even runs.
 
 from typing import Literal, Optional
 
@@ -16,19 +11,19 @@ class RecommendRequest(BaseModel):
 
     Example JSON:
         {
-            "postcode": "TR1 1AA",
+            "location": "TR1 1AA",
             "species": "Bass",
             "preference": "best-chance"
         }
     """
 
-    # The user's UK postcode — required, cannot be empty
-    postcode: str = Field(
-        ...,  # `...` means the field is required (no default)
-        min_length=5,
-        max_length=8,
-        examples=["TR1 1AA"],
-        description="UK postcode used to find the nearest harbour.",
+    # A UK postcode or any place name — required
+    location: str = Field(
+        ...,
+        min_length=2,
+        max_length=100,
+        examples=["TR1 1AA", "Falmouth", "New York"],
+        description="UK postcode or place name used to find nearby harbours.",
     )
 
     # Which fish the user is targeting — optional, defaults to None

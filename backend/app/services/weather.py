@@ -16,6 +16,7 @@
 import hashlib
 import logging
 import random
+import time
 from dataclasses import dataclass
 from datetime import date
 from typing import Optional, Tuple
@@ -103,48 +104,70 @@ def _douglas_sea_state(wave_height_m: float) -> str:
 
 # ─── Open-Meteo API calls ─────────────────────────────────────────────────────
 
+_RETRY_DELAY_S = 1.0   # wait before retrying a 429 response
+
+
 def _fetch_wind(lat: float, lon: float) -> Optional[Tuple[float, float]]:
-    """Call Open-Meteo forecast API.  Returns (speed_knots, direction_degrees)."""
-    try:
-        resp = httpx.get(
-            _WIND_API,
-            params={
-                "latitude": lat,
-                "longitude": lon,
-                "current": "wind_speed_10m,wind_direction_10m",
-                "wind_speed_unit": "kn",
-                "timezone": "Europe/London",
-                "forecast_days": 1,
-            },
-            timeout=_TIMEOUT_S,
-        )
-        if resp.status_code == 200:
-            current = resp.json()["current"]
-            return float(current["wind_speed_10m"]), float(current["wind_direction_10m"])
-    except Exception as exc:
-        logger.debug("Open-Meteo wind fetch failed: %s", exc)
+    """Call Open-Meteo forecast API.  Returns (speed_knots, direction_degrees).
+
+    Retries once after _RETRY_DELAY_S on a 429 (rate-limit) response — parallel
+    requests for multiple harbour candidates can otherwise cause silent failures.
+    """
+    for attempt in range(2):
+        try:
+            resp = httpx.get(
+                _WIND_API,
+                params={
+                    "latitude": lat,
+                    "longitude": lon,
+                    "current": "wind_speed_10m,wind_direction_10m",
+                    "wind_speed_unit": "kn",
+                    "timezone": "Europe/London",
+                    "forecast_days": 1,
+                },
+                timeout=_TIMEOUT_S,
+            )
+            if resp.status_code == 200:
+                current = resp.json()["current"]
+                return float(current["wind_speed_10m"]), float(current["wind_direction_10m"])
+            if resp.status_code == 429 and attempt == 0:
+                logger.debug("Open-Meteo wind 429 — retrying after %.1fs", _RETRY_DELAY_S)
+                time.sleep(_RETRY_DELAY_S)
+                continue
+        except Exception as exc:
+            logger.debug("Open-Meteo wind fetch failed: %s", exc)
+            break
     return None
 
 
 def _fetch_waves(lat: float, lon: float) -> Optional[Tuple[float, float]]:
-    """Call Open-Meteo marine API.  Returns (wave_height_m, wave_period_s)."""
-    try:
-        resp = httpx.get(
-            _WAVE_API,
-            params={
-                "latitude": lat,
-                "longitude": lon,
-                "current": "wave_height,wave_period",
-                "timezone": "Europe/London",
-                "forecast_days": 1,
-            },
-            timeout=_TIMEOUT_S,
-        )
-        if resp.status_code == 200:
-            current = resp.json()["current"]
-            return float(current["wave_height"]), float(current["wave_period"])
-    except Exception as exc:
-        logger.debug("Open-Meteo wave fetch failed: %s", exc)
+    """Call Open-Meteo marine API.  Returns (wave_height_m, wave_period_s).
+
+    Retries once after _RETRY_DELAY_S on a 429 (rate-limit) response.
+    """
+    for attempt in range(2):
+        try:
+            resp = httpx.get(
+                _WAVE_API,
+                params={
+                    "latitude": lat,
+                    "longitude": lon,
+                    "current": "wave_height,wave_period",
+                    "timezone": "Europe/London",
+                    "forecast_days": 1,
+                },
+                timeout=_TIMEOUT_S,
+            )
+            if resp.status_code == 200:
+                current = resp.json()["current"]
+                return float(current["wave_height"]), float(current["wave_period"])
+            if resp.status_code == 429 and attempt == 0:
+                logger.debug("Open-Meteo waves 429 — retrying after %.1fs", _RETRY_DELAY_S)
+                time.sleep(_RETRY_DELAY_S)
+                continue
+        except Exception as exc:
+            logger.debug("Open-Meteo wave fetch failed: %s", exc)
+            break
     return None
 
 

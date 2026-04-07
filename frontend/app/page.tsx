@@ -10,22 +10,16 @@ export default function HomePage() {
     <main className="page-wrapper">
       {/* ── Header ──────────────────────────────────────────────────────── */}
       <header className="page-header">
-        {/* Decorative coordinates — evokes a navigation instrument */}
-        <p className="coord-line" aria-hidden="true">
-          50°09′N 5°04′W &nbsp;·&nbsp; COASTAL ADVISORY SYSTEM
-        </p>
-
         {/* Main title */}
         <h1 className="page-title">
-          AI&nbsp;Fishing
-          <br />
-          <span className="title-accent">Copilot</span>
+          Fishing
+          <span className="title-accent"> Copilot</span>
         </h1>
 
         {/* Short description */}
         <p className="page-subtitle">
-          Enter your postcode and we&apos;ll find the nearest harbour, optimal tidal window, and
-          AI-powered recommendation.
+          Enter your postcode to find the best nearby harbour, optimal tidal window and a
+          personalised catch forecast.
         </p>
       </header>
 
@@ -36,7 +30,7 @@ export default function HomePage() {
       </div>
 
       {/* ── Footer ──────────────────────────────────────────────────────── */}
-      <footer className="page-footer">AI Fishing Copilot &mdash; prototype build</footer>
+      <footer className="page-footer">AI Fishing Copilot &mdash; UK coastal waters</footer>
     </main>
   );
 }

@@ -294,6 +294,13 @@ class TestGenerateExplanation:
 class TestRecommendAiFallback:
     """Verify the endpoint sets used_fallback correctly based on AI outcome."""
 
+    def _mock_geo_success(self):
+        """Returns a mock httpx response that resolves TR1 1AA → Truro coords."""
+        m = MagicMock()
+        m.status_code = 200
+        m.json.return_value = {"result": {"latitude": 50.2632, "longitude": -5.0510}}
+        return m
+
     def test_used_fallback_false_when_ai_succeeds(self, client):
         mock_response = MagicMock()
         mock_response.text = "Great Bass conditions at Falmouth today."
@@ -301,31 +308,37 @@ class TestRecommendAiFallback:
         mock_model.generate_content.return_value = mock_response
 
         env = {"GOOGLE_CLOUD_PROJECT": "test-project"}
-        with patch("app.services.ai_explanation.vertexai"), \
+        with patch("app.services.geocoding.httpx.get", return_value=self._mock_geo_success()), \
+             patch("app.services.harbour._fetch_overpass", return_value=()), \
+             patch("app.services.ai_explanation.vertexai"), \
              patch("app.services.ai_explanation.GenerativeModel", return_value=mock_model), \
              patch.dict(os.environ, env, clear=False):
-            resp = client.post("/recommend", json={"postcode": "TR1 1AA", "species": "Bass"})
+            resp = client.post("/recommend", json={"location": "TR1 1AA", "species": "Bass"})
 
         assert resp.status_code == 200
         data = resp.json()
-        # used_fallback is False only when both postcode resolved AND AI succeeded
+        # used_fallback is False only when location resolved AND AI succeeded
         assert data["used_fallback"] is False
         assert data["explanation"] == "Great Bass conditions at Falmouth today."
 
     def test_used_fallback_true_when_ai_fails(self, client):
         env = {"GOOGLE_CLOUD_PROJECT": "test-project"}
-        with patch("app.services.ai_explanation.vertexai"), \
+        with patch("app.services.geocoding.httpx.get", return_value=self._mock_geo_success()), \
+             patch("app.services.harbour._fetch_overpass", return_value=()), \
+             patch("app.services.ai_explanation.vertexai"), \
              patch("app.services.ai_explanation.GenerativeModel",
                    side_effect=Exception("auth error")), \
              patch.dict(os.environ, env, clear=False):
-            resp = client.post("/recommend", json={"postcode": "TR1 1AA"})
+            resp = client.post("/recommend", json={"location": "TR1 1AA"})
 
         assert resp.status_code == 200
         assert resp.json()["used_fallback"] is True
 
     def test_used_fallback_true_when_project_unset(self, client):
         env = {k: v for k, v in os.environ.items() if k != "GOOGLE_CLOUD_PROJECT"}
-        with patch.dict(os.environ, env, clear=True):
-            resp = client.post("/recommend", json={"postcode": "TR1 1AA"})
+        with patch("app.services.geocoding.httpx.get", return_value=self._mock_geo_success()), \
+             patch("app.services.harbour._fetch_overpass", return_value=()), \
+             patch.dict(os.environ, env, clear=True):
+            resp = client.post("/recommend", json={"location": "TR1 1AA"})
         assert resp.status_code == 200
         assert resp.json()["used_fallback"] is True

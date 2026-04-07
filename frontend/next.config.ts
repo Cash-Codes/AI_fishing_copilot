@@ -2,6 +2,9 @@ import path from "path";
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Produces a self-contained Node.js server in .next/standalone — required for
+  // the Docker image so we don't need to copy the entire node_modules tree.
+  output: "standalone",
   turbopack: {
     /**
      * Explicitly pin Turbopack's root to the `frontend/` directory.

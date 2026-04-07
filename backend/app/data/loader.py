@@ -25,14 +25,19 @@ _DATA_DIR = Path(__file__).parent
 # ─── Domain models ────────────────────────────────────────────────────────────
 
 class Harbour(BaseModel):
-    """A UK fishing harbour with location and descriptive metadata."""
+    """A fishing harbour with location metadata.
+
+    postcode and short_description are optional so harbours sourced from
+    the Overpass/OSM API (which don't carry this extra metadata) can be
+    represented without dummy sentinel values in the call sites.
+    """
 
     id: str
     name: str
-    postcode: str
     latitude: float
     longitude: float
-    short_description: str
+    postcode: str = ""
+    short_description: str = ""
 
 
 class Species(BaseModel):
