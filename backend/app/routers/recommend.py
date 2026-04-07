@@ -21,6 +21,7 @@ from fastapi import APIRouter
 from app.models.request import RecommendRequest
 from app.models.response import RecommendResponse
 from app.retrieval.retriever import get_retriever
+from app.services.ai_explanation import ExplanationContext, generate_explanation
 from app.services.conditions import get_conditions
 from app.services.harbour import default_harbour, nearest_harbour
 from app.services.postcode import resolve_postcode
@@ -110,22 +111,25 @@ def get_recommendation(body: RecommendRequest) -> RecommendResponse:
     retrieved_notes = get_retriever().retrieve_text(retrieval_query, top_k=3)
     logger.info("Retrieved %d notes for query: %r", len(retrieved_notes), retrieval_query)
 
-    # ── Step 5: build response ────────────────────────────────────────────────
-    # The explanation text is still template-based.
-    # A future iteration will replace this with a real AI-generated narrative.
-
-    distance_note = (
-        f"{distance_km:.0f} km from {body.postcode}"
-        if distance_km >= 0
-        else "location could not be determined from postcode"
+    # ── Step 5: generate AI explanation ──────────────────────────────────────
+    ai_ctx = ExplanationContext(
+        postcode=body.postcode,
+        species=body.species,
+        preference=body.preference,
+        harbour_name=harbour.name,
+        harbour_description=harbour.short_description,
+        distance_km=distance_km,
+        recommendation_window=conditions.recommended_time_window,
+        confidence_score=score.confidence_score,
+        conditions_summary=conditions.conditions_summary,
+        retrieved_notes=retrieved_notes,
     )
+    ai_result = generate_explanation(ai_ctx)
 
-    explanation = (
-        f"{harbour.name} is your nearest harbour ({distance_note}). "
-        f"{harbour.short_description} "
-        f"Conditions today: {conditions.conditions_summary} "
-        f"Targeting {body.species or 'general sea fishing'} with a preference "
-        f'for "{body.preference}".'
+    # used_fallback is True if either the postcode lookup OR the AI call fell back
+    final_fallback = used_fallback or not ai_result.used_ai
+    logger.info(
+        "Explanation | used_ai=%s | fallback=%s", ai_result.used_ai, final_fallback
     )
 
     return RecommendResponse(
@@ -133,8 +137,8 @@ def get_recommendation(body: RecommendRequest) -> RecommendResponse:
         nearest_harbour=harbour.name,
         recommendation_window=conditions.recommended_time_window,
         confidence_score=score.confidence_score,
-        explanation=explanation,
-        used_fallback=used_fallback,
+        explanation=ai_result.text,
+        used_fallback=final_fallback,
         retrieved_notes=retrieved_notes,
         # Conditions fields
         wind_speed_knots=conditions.wind_speed_knots,
