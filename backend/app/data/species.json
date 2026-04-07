@@ -1,0 +1,62 @@
+[
+  {
+    "species_name": "Bass",
+    "best_season": "May–October",
+    "notes": "Highly prized sport fish. Feeds aggressively on the flood tide around rocky headlands, estuary mouths, and surf beaches. Catch-and-release strongly encouraged.",
+    "preferred_conditions": "Warm water (>12°C), moderate wave action, tidal flow 1–3 knots. Dawn and dusk most productive. Avoid flat-calm conditions."
+  },
+  {
+    "species_name": "Mackerel",
+    "best_season": "June–September",
+    "notes": "Shoaling pelagic fish that moves inshore in summer. Simple to catch on feathers or spinners; excellent eating. Often used as live bait for Shark and Tope.",
+    "preferred_conditions": "Clear water, surface temperature >15°C. Look for working birds and surface activity. Most abundant 1–5 miles offshore."
+  },
+  {
+    "species_name": "Pollack",
+    "best_season": "April–October",
+    "notes": "Strong-fighting wreck and reef fish. Responds well to soft-plastic lures worked slowly on the drop. Larger specimens (4 kg+) favour deep wreck marks.",
+    "preferred_conditions": "Broken ground, kelp edges, and wrecks in 15–40 m. Low-light periods most productive. Dislikes heavy current — slack water is ideal."
+  },
+  {
+    "species_name": "Cod",
+    "best_season": "October–March",
+    "notes": "Classic winter target from harbours and piers. Feeds on worms, crabs, and shellfish on the seabed. Night tides over spring neaps are consistently best.",
+    "preferred_conditions": "Cold, coloured water after rough weather. Rough ground and storm beaches. Larger baits (whole squid, peeler crab) outfish small baits."
+  },
+  {
+    "species_name": "Flounder",
+    "best_season": "October–April",
+    "notes": "Flatfish that moves high into estuaries on the tide. Excellent beginner species — forgiving on bait and technique. Can be caught from harbour walls and sandy beaches.",
+    "preferred_conditions": "Estuarine mud and sand, water temperature <12°C. Ragworm is the go-to bait. Fish close in — often within 20 m of the bank."
+  },
+  {
+    "species_name": "Bream (Black)",
+    "best_season": "May–September",
+    "notes": "Reef and wreck species that arrives inshore in spring to spawn. Shoal fish so once located sport can be exceptional. Small hooks and light tackle essential.",
+    "preferred_conditions": "Rocky reef, clean ground, 10–30 m. Warm water triggers feeding. Slow drifts over the mark more productive than anchoring."
+  },
+  {
+    "species_name": "Wrasse",
+    "best_season": "April–October",
+    "notes": "Colourful rocky-shore predator. Ballan Wrasse are the most common; Cuckoo Wrasse provide vivid colour. Lure fishing in kelp is highly visual and exciting.",
+    "preferred_conditions": "Dense kelp and rocky terrain in 2–10 m. Crab, prawn, or worm baits close to the rocks. Strong fighters — use adequate gear to avoid losing fish in weed."
+  },
+  {
+    "species_name": "Plaice",
+    "best_season": "March–June",
+    "notes": "Sought-after flatfish with distinctive orange spots. Sandy-gravel ground between 5–20 m. Ragworm and lugworm tipped with a sliver of squid produces well.",
+    "preferred_conditions": "Sandy or mixed ground with tidal run. Neap tides allow bait to work close to the seabed. Early morning flood tide is the prime feeding window."
+  },
+  {
+    "species_name": "Tope",
+    "best_season": "May–August",
+    "notes": "Member of the shark family — one of the UK's strongest fighting fish. Almost exclusively a boat-fishing target. Tagged and released by most UK anglers.",
+    "preferred_conditions": "Sandy ground and offshore banks in 15–40 m. Mackerel or Herring whole-fish baits on running leger. Prime activity on the last two hours of the flood."
+  },
+  {
+    "species_name": "Conger Eel",
+    "best_season": "Year-round (peak July–September)",
+    "notes": "Powerful nocturnal predator living in rock crevices and wrecks. Requires strong tackle — 50 lb+ class from wrecks. Night fishing from harbour walls also productive.",
+    "preferred_conditions": "Rough ground, wrecks, harbour walls after dark. Large baits (whole Mackerel, Squid). Strong tidal flow concentrates fish; fish the last of the ebb."
+  }
+]
