@@ -36,7 +36,6 @@ except ImportError:  # pragma: no cover
     _VERTEXAI_AVAILABLE = False
 
 _DEFAULT_MODEL = "gemini-2.0-flash"
-_GENERATION_TIMEOUT_S = 15   # abort if Vertex AI takes longer than this
 
 
 # ─── Input / output types ─────────────────────────────────────────────────────
@@ -150,8 +149,6 @@ def _vertex_generate(ctx: ExplanationContext) -> ExplanationResult:
             max_output_tokens=220,
             candidate_count=1,
         ),
-        # request_options lets us set a per-call timeout
-        request_options={"timeout": _GENERATION_TIMEOUT_S},
     )
 
     text = response.text.strip() if response.text else ""

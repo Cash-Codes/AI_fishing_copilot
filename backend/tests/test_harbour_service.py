@@ -164,8 +164,17 @@ class TestRecommendFallback:
     """Verify the /recommend endpoint sets used_fallback correctly."""
 
     def test_known_postcode_fallback_false(self, client):
-        # TR1 1AA is in the seed map — no fallback needed
-        resp = client.post("/recommend", json={"postcode": "TR1 1AA"})
+        # TR1 1AA is in the seed map — no fallback needed.
+        # Mock AI so used_fallback reflects only the postcode result.
+        mock_response = MagicMock()
+        mock_response.text = "Great conditions at Falmouth today."
+        mock_model = MagicMock()
+        mock_model.generate_content.return_value = mock_response
+        env = {"GOOGLE_CLOUD_PROJECT": "test-project"}
+        with patch("app.services.ai_explanation.vertexai"), \
+             patch("app.services.ai_explanation.GenerativeModel", return_value=mock_model), \
+             patch.dict("os.environ", env, clear=False):
+            resp = client.post("/recommend", json={"postcode": "TR1 1AA"})
         assert resp.status_code == 200
         assert resp.json()["used_fallback"] is False
 
