@@ -10,8 +10,6 @@
 
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 from app.services.harbour import haversine_km, nearest_harbour, default_harbour
 from app.services.postcode import resolve_postcode, _outward_code
 
