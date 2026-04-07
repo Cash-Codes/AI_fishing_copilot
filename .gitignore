@@ -1,0 +1,75 @@
+# ─── Python ───────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg
+*.egg-info/
+dist/
+build/
+eggs/
+parts/
+var/
+sdist/
+develop-eggs/
+.installed.cfg
+lib/
+lib64/
+*.so
+docs/
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+
+# ─── Node / Frontend ──────────────────────────────────────────────────────────
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+.npm/
+dist/
+.next/
+.nuxt/
+.output/
+.cache/
+
+# ─── Environment & Secrets ────────────────────────────────────────────────────
+# Never commit real secrets — use .env.example as the template
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+service_account*.json
+
+# ─── OS Files ─────────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ─── Editors & IDEs ───────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# ─── Build & Generated ────────────────────────────────────────────────────────
+*.log
+*.tmp
+*.bak
+coverage/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+htmlcov/
+
+# ─── FAISS / ML Artifacts ─────────────────────────────────────────────────────
+# Index files can be large — store them outside the repo or in a volume
+*.faiss
+*.index
