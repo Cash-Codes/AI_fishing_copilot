@@ -5,21 +5,20 @@
 # serving the `app` object defined below.
 
 import logging
-import os
 
 from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.routers import health, recommend
+from app.settings import get_settings
 
 # ── Load environment variables ─────────────────────────────────────────────────
 # Reads key=value pairs from the .env file into os.environ.
-# Must happen before any code that reads environment variables.
+# Must happen before Settings() is constructed so all env vars are visible.
 load_dotenv()
 
 # ── Logging ───────────────────────────────────────────────────────────────────
-# basicConfig sets the format for all log messages across the app.
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s  %(levelname)-8s  %(name)s — %(message)s",
@@ -28,8 +27,6 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # ── App instance ──────────────────────────────────────────────────────────────
-# FastAPI() creates the application. The metadata here powers the auto-generated
-# docs page at http://localhost:8000/docs
 app = FastAPI(
     title="AI Fishing Copilot API",
     description=(
@@ -41,24 +38,47 @@ app = FastAPI(
 )
 
 # ── CORS middleware ────────────────────────────────────────────────────────────
-# CORS (Cross-Origin Resource Sharing) controls which domains can call this API.
-# Without this, the browser blocks requests from the frontend (different port).
-# In production, replace "*" with your actual frontend URL.
-allowed_origins_env = os.getenv("CORS_ALLOWED_ORIGINS", "http://localhost:3000")
-allowed_origins = [origin.strip() for origin in allowed_origins_env.split(",")]
+settings = get_settings()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=allowed_origins,  # e.g. ["http://localhost:3000"]
+    allow_origins=settings.cors_origins_list,
     allow_credentials=True,
-    allow_methods=["*"],   # allow GET, POST, OPTIONS, etc.
-    allow_headers=["*"],   # allow any request headers
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # ── Register routers ──────────────────────────────────────────────────────────
-# Each router is defined in its own file under app/routers/.
-# `include_router` mounts all of its endpoints onto the main app.
 app.include_router(health.router)
 app.include_router(recommend.router)
 
-logger.info("AI Fishing Copilot API started — docs at http://localhost:8000/docs")
+# ── Startup log ───────────────────────────────────────────────────────────────
+# Print a clear summary of the active configuration so operators can confirm
+# the app started with the right settings without reading every env var.
+
+def _vertex_status(s) -> str:
+    if not s.enable_vertex_ai:
+        return "disabled  (ENABLE_VERTEX_AI=false)"
+    if not s.google_cloud_project:
+        return (
+            "disabled  (ENABLE_VERTEX_AI=true but GOOGLE_CLOUD_PROJECT is not set "
+            "— set it to enable AI explanations)"
+        )
+    return (
+        f"enabled   (project={s.google_cloud_project}, "
+        f"model={s.vertex_ai_model}, "
+        f"region={s.google_cloud_region})"
+    )
+
+
+def _mock_status(s) -> str:
+    if s.enable_mock_fallback:
+        return "enabled   (weather falls back to deterministic mock on API failure)"
+    return "disabled  (real weather API required — errors will surface if unreachable)"
+
+
+logger.info("AI Fishing Copilot API ready")
+logger.info("  vertex_ai     : %s", _vertex_status(settings))
+logger.info("  mock_fallback : %s", _mock_status(settings))
+logger.info("  cors          : %s", settings.cors_allowed_origins)
+logger.info("  docs          : http://%s:%d/docs", settings.backend_host, settings.backend_port)

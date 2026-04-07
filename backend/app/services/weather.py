@@ -23,6 +23,7 @@ from typing import Optional, Tuple
 import httpx
 
 from app.data.loader import Harbour
+from app.settings import get_settings
 
 logger = logging.getLogger(__name__)
 
@@ -208,6 +209,12 @@ def get_weather(
             wave_height_m=round(wave_h, 2),
             sea_state=_douglas_sea_state(wave_h),
             data_source="open-meteo",
+        )
+
+    if not get_settings().enable_mock_fallback:
+        raise RuntimeError(
+            f"Open-Meteo API unavailable for {harbour.name} and "
+            "ENABLE_MOCK_FALLBACK=false — no weather data available"
         )
 
     logger.info("Falling back to mock weather for %s", harbour.name)

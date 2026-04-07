@@ -225,14 +225,14 @@ class TestVertexGenerate:
 
         env = {
             "GOOGLE_CLOUD_PROJECT": "test-project",
-            "VERTEX_AI_MODEL": "gemini-2.0-flash-lite",
+            "VERTEX_AI_MODEL": "gemini-2.5-flash-lite",
         }
         with patch("app.services.ai_explanation.vertexai"), \
              patch("app.services.ai_explanation.GenerativeModel", mock_gm_class), \
              patch.dict(os.environ, env, clear=False):
             _vertex_generate(CTX)
 
-        mock_gm_class.assert_called_once_with("gemini-2.0-flash-lite")
+        mock_gm_class.assert_called_once_with("gemini-2.5-flash-lite")
 
 
 # ─── generate_explanation (public API) ────────────────────────────────────────
