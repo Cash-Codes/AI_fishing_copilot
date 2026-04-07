@@ -20,6 +20,7 @@ from fastapi import APIRouter
 
 from app.models.request import RecommendRequest
 from app.models.response import RecommendResponse
+from app.retrieval.retriever import get_retriever
 from app.services.conditions import get_conditions
 from app.services.harbour import default_harbour, nearest_harbour
 from app.services.postcode import resolve_postcode
@@ -95,7 +96,21 @@ def get_recommendation(body: RecommendRequest) -> RecommendResponse:
         score.confidence_score,
     )
 
-    # ── Step 4: build response ────────────────────────────────────────────────
+    # ── Step 4: retrieve relevant corpus notes ────────────────────────────────
+    # Build a natural-language query from the request context so the retriever
+    # can find the most relevant guidance snippets.
+    retrieval_query = " ".join(filter(None, [
+        body.species,
+        harbour.name,
+        conditions.tide_phase,
+        conditions.spring_or_neap,
+        body.preference,
+        "fishing",
+    ]))
+    retrieved_notes = get_retriever().retrieve_text(retrieval_query, top_k=3)
+    logger.info("Retrieved %d notes for query: %r", len(retrieved_notes), retrieval_query)
+
+    # ── Step 5: build response ────────────────────────────────────────────────
     # The explanation text is still template-based.
     # A future iteration will replace this with a real AI-generated narrative.
 
@@ -112,19 +127,6 @@ def get_recommendation(body: RecommendRequest) -> RecommendResponse:
         f"Targeting {body.species or 'general sea fishing'} with a preference "
         f'for "{body.preference}".'
     )
-
-    retrieved_notes = [
-        f"{conditions.tide_phase} tide ({conditions.spring_or_neap.lower()}, "
-        f"coefficient {conditions.tidal_coefficient:.2f}) — "
-        + ("strong tidal flow expected." if conditions.tidal_coefficient > 0.7
-           else "moderate tidal flow."),
-        f"{conditions.wind_description} ({conditions.wind_speed_knots:.0f} kn "
-        f"{conditions.wind_direction}) — "
-        + ("conditions are challenging." if conditions.wind_speed_knots > 20
-           else "manageable conditions near the headland."),
-        f"{conditions.sea_state} swell ({conditions.wave_height_m:.1f} m). "
-        f"Next high water at {conditions.next_high_water}.",
-    ]
 
     return RecommendResponse(
         input_postcode=body.postcode,

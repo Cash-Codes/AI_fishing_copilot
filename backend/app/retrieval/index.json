@@ -1,0 +1,494 @@
+{
+  "version": "1.0",
+  "built_at": "2026-04-07T15:20:14.923012+00:00",
+  "chunks": [
+    {
+      "chunk_id": "harbour_selection_001",
+      "topic": "harbour_selection",
+      "heading": "Proximity vs Quality",
+      "text": "The nearest harbour is not always the best choice, but it is often the most practical. Travel time to a fishing mark has real cost: arriving tired, in deteriorating weather, or after the optimal tidal window has passed can ruin a session. For beginners especially, starting close to home is the right approach.",
+      "word_count": 53,
+      "embedding": null
+    },
+    {
+      "chunk_id": "harbour_selection_002",
+      "topic": "harbour_selection",
+      "heading": "Proximity vs Quality",
+      "text": "The ideal balance: Within 30–45 minutes travel for a session lasting 4–6 hours Far enough to encounter genuinely good fishing (major population centres rarely have exceptional inshore marks immediately adjacent) Accessible at the state of tide you plan to fish",
+      "word_count": 40,
+      "embedding": null
+    },
+    {
+      "chunk_id": "harbour_selection_003",
+      "topic": "harbour_selection",
+      "heading": "Understanding Harbour Descriptions",
+      "text": "Fishing marks are described in terms of target species, technique, and tidal access. Key phrases: \"Year-round\" — species available in all seasons but may not be at peak \"Charter port\" — boats available for hire; often signals quality offshore marks nearby \"Estuary\" — usually calmer conditions, Flounder and Bass marks, but tidal access matters \"Rocky ground\" — typically Wrasse, Pollack, and Conger habitat; requires heavier tackle \"Exposed\" — subject to wind and swell; only fishable in settled conditions \"Sheltered\" — calm in most weather; may sacrifice specimen fish for reliability",
+      "word_count": 90,
+      "embedding": null
+    },
+    {
+      "chunk_id": "harbour_selection_004",
+      "topic": "harbour_selection",
+      "heading": "Shelter and Safety",
+      "text": "Exposed headlands and open beaches produce the best fishing in settled conditions but become dangerous quickly when weather deteriorates. Harbours with breakwaters or natural shelter can often be fished safely when nearby open coasts are inaccessible.",
+      "word_count": 36,
+      "embedding": null
+    },
+    {
+      "chunk_id": "harbour_selection_005",
+      "topic": "harbour_selection",
+      "heading": "Shelter and Safety",
+      "text": "Criteria for a sheltered harbour: Breakwater providing protection from prevailing SW to W wind Harbour walls where you can turn your back to the weather Easy exit routes to car parks and roads (not cliff paths) Mobile phone signal, or within sight of the coastguard station",
+      "word_count": 46,
+      "embedding": null
+    },
+    {
+      "chunk_id": "harbour_selection_006",
+      "topic": "harbour_selection",
+      "heading": "Shelter and Safety",
+      "text": "Always identify an exit route before you start fishing. A harbourside mark accessible at low water may be cut off when the tide rises.",
+      "word_count": 24,
+      "embedding": null
+    },
+    {
+      "chunk_id": "harbour_selection_007",
+      "topic": "harbour_selection",
+      "heading": "Charter Fishing vs Shore Fishing",
+      "text": "Charter boats give access to marks beyond shore range: offshore wrecks, deep reefs, and isolated sandbanks that produce larger specimens. The trade-off is cost (typically £50–90 per person per day) and availability.",
+      "word_count": 32,
+      "embedding": null
+    },
+    {
+      "chunk_id": "harbour_selection_008",
+      "topic": "harbour_selection",
+      "heading": "Charter Fishing vs Shore Fishing",
+      "text": "Charter fishing suits: Targeting offshore species: large Pollack, Bream, Tope, Shark Deep-water Cod and Ling on wreck marks When inshore shore fishing is producing poor results Shore fishing suits: Budget-conscious anglers or beginners developing technique Species that regularly approach the shoreline: Bass, Mackerel, Flounder, Codling Locations where charter boats are unavailable or booked in advance",
+      "word_count": 55,
+      "embedding": null
+    },
+    {
+      "chunk_id": "harbour_selection_009",
+      "topic": "harbour_selection",
+      "heading": "Tidal Access and Timing",
+      "text": "Many harbour marks are only accessible at certain states of the tide. Common constraints: Rocky reef marks: fishable at low water, covered (and unsafe to access) at high Estuary channels: fish move in on flood; the best position changes through the tide Pier ends: sometimes only passable on foot at certain tidal states due to gates or steps Harbours with drying areas: only accessible by boat at certain tidal heights",
+      "word_count": 70,
+      "embedding": null
+    },
+    {
+      "chunk_id": "harbour_selection_010",
+      "topic": "harbour_selection",
+      "heading": "Tidal Access and Timing",
+      "text": "Check your planned mark at both the tide you intend to fish and the state the tide will be when you need to leave. Many anglers get into difficulty because they arrive at low water and don't account for the flood cutting off the return route.",
+      "word_count": 46,
+      "embedding": null
+    },
+    {
+      "chunk_id": "harbour_selection_011",
+      "topic": "harbour_selection",
+      "heading": "Seasonal Harbour Choice",
+      "text": "Some harbours fish better at certain times of year: Winter (Nov–Mar): sheltered, south-facing harbours for Cod and Whiting; avoid exposed north-facing marks in prevailing north-west gales Spring (Apr–May): estuary mouths as Bass arrive inshore; Bass staking out the flood-tide marks Summer (Jun–Sep): anywhere with offshore charter access for Bream and Tope; pier fishing for Mackerel Autumn (Sep–Nov): the most productive all-round season; Bass peak, Cod arriving, Mackerel still present; most harbours productive",
+      "word_count": 72,
+      "embedding": null
+    },
+    {
+      "chunk_id": "harbour_selection_012",
+      "topic": "harbour_selection",
+      "heading": "Distance and the Recommendation Score",
+      "text": "Our scoring system balances harbour distance against species match. A harbour 10 km away that is well-known for your target species in season will often outscore a 2 km harbour that has no track record for that fish. Understanding this trade-off helps interpret the confidence score you receive.",
+      "word_count": 48,
+      "embedding": null
+    },
+    {
+      "chunk_id": "harbour_selection_013",
+      "topic": "harbour_selection",
+      "heading": "Distance and the Recommendation Score",
+      "text": "The \"closest\" preference setting maximises the distance component of the score; \"best-chance\" maximises the species and season match. Use \"closest\" when you have limited time or transport; \"best-chance\" when you want the most productive session possible.",
+      "word_count": 36,
+      "embedding": null
+    },
+    {
+      "chunk_id": "safety_notes_001",
+      "topic": "safety_notes",
+      "heading": "Check the Forecast Before You Go",
+      "text": "Weather at sea changes faster than on land. A force 3 breeze onshore can be force 5 offshore, and a forecast for 1-metre waves can quickly become 2-metre waves on exposed marks.",
+      "word_count": 32,
+      "embedding": null
+    },
+    {
+      "chunk_id": "safety_notes_002",
+      "topic": "safety_notes",
+      "heading": "Check the Forecast Before You Go",
+      "text": "Always check: Wind speed and direction from the Met Office marine forecast (gov.uk/weather) Wave height from Windguru, Magic Seaweed, or the Coastguard NCI forecast Tide times and range for your specific harbour from Admiralty EasyTide or a current almanac Any harbour or coastguard notices for the area",
+      "word_count": 47,
+      "embedding": null
+    },
+    {
+      "chunk_id": "safety_notes_003",
+      "topic": "safety_notes",
+      "heading": "Check the Forecast Before You Go",
+      "text": "The Met Office Inshore Waters forecast is the most authoritative source for UK coastal waters. Check it the evening before and again on the morning of the session.",
+      "word_count": 28,
+      "embedding": null
+    },
+    {
+      "chunk_id": "safety_notes_004",
+      "topic": "safety_notes",
+      "heading": "Never Fish Alone at Night",
+      "text": "Night fishing produces excellent Cod, Conger, and Bass results, but shore fishing alone in darkness on rocky ground or harbour walls is high-risk. If you slip, lose footing, or are taken by a wave, there is no one to raise the alarm.",
+      "word_count": 42,
+      "embedding": null
+    },
+    {
+      "chunk_id": "safety_notes_005",
+      "topic": "safety_notes",
+      "heading": "Never Fish Alone at Night",
+      "text": "Rules for safe night fishing: Always fish with at least one companion Tell a responsible person (family member, friend) exactly where you are going and what time you expect to return Agree a check-in time — if you miss it, they should call the Coastguard (999 in an emergency, or VHF Channel 16) Carry a mobile phone in a waterproof case or bag Wear a head torch with fresh batteries and carry a spare",
+      "word_count": 74,
+      "embedding": null
+    },
+    {
+      "chunk_id": "safety_notes_006",
+      "topic": "safety_notes",
+      "heading": "Tidal Cut-offs",
+      "text": "A tidal cut-off occurs when the rising tide blocks the route back to safety. It is the most common cause of serious fishing incidents on rocky shore marks. How to avoid a cut-off: Study the tide table before leaving the car; identify the time of high water Walk your intended route at LOW water and assess which sections will be covered as the tide rises Begin your exit at least one hour before the relevant section of path or rock floods Never assume you can outrun the tide — rocks become slippery extremely quickly as water touches them If you are cut off, stay high, call 999 for Coastguard, and stay visible. Do NOT attempt to wade through tidal water over rocky ground",
+      "word_count": 123,
+      "embedding": null
+    },
+    {
+      "chunk_id": "safety_notes_007",
+      "topic": "safety_notes",
+      "heading": "Tidal Cut-offs",
+      "text": "The tide can rise by 1 metre in 30 minutes on a spring tide on many UK coasts. It is always faster than it looks when you are watching from high ground.",
+      "word_count": 32,
+      "embedding": null
+    },
+    {
+      "chunk_id": "safety_notes_008",
+      "topic": "safety_notes",
+      "heading": "Life Jackets and Buoyancy Aids",
+      "text": "A life jacket should be worn whenever fishing from a boat, kayak, or stand-up paddleboard. The RNLI and RYA recommend automatic inflate (150N) life jackets as the minimum standard for offshore use.",
+      "word_count": 32,
+      "embedding": null
+    },
+    {
+      "chunk_id": "safety_notes_009",
+      "topic": "safety_notes",
+      "heading": "Life Jackets and Buoyancy Aids",
+      "text": "For shore fishing, a life jacket is less common but strongly recommended when: Fishing alone on exposed harbour walls or rocky headlands Night fishing in autumn and winter when seas are unpredictable Fishing in areas with known fast-rising tidal currents",
+      "word_count": 40,
+      "embedding": null
+    },
+    {
+      "chunk_id": "safety_notes_010",
+      "topic": "safety_notes",
+      "heading": "Life Jackets and Buoyancy Aids",
+      "text": "A buoyancy aid (50N) provides swimming assistance but will not turn an unconscious person face-up. For coastal sea fishing an automatic inflate life jacket offers considerably more protection.",
+      "word_count": 28,
+      "embedding": null
+    },
+    {
+      "chunk_id": "safety_notes_011",
+      "topic": "safety_notes",
+      "heading": "Weather Windows and Conditions Thresholds",
+      "text": "Practical guidance for different conditions: Wind below 15 knots: generally fishable from harbour walls and sheltered marks for all skill levels Wind 15–25 knots: suitable for experienced anglers on sheltered marks only; avoid exposed headlands Wind above 25 knots: most shore marks become unsafe; some very sheltered harbour walls remain fishable Swell above 2 metres: any mark with tidal surge or wave wash becomes hazardous Swell above 3 metres: abandon all coastal headland and rocky shore fishing",
+      "word_count": 77,
+      "embedding": null
+    },
+    {
+      "chunk_id": "safety_notes_012",
+      "topic": "safety_notes",
+      "heading": "Weather Windows and Conditions Thresholds",
+      "text": "After storms, even when the storm has passed: Swell can persist for 24–48 hours after the wind has dropped (residual swell) Rocky surfaces remain exceptionally slippery for hours after being wet Floating debris in the water can mask tidal currents and obstacles",
+      "word_count": 42,
+      "embedding": null
+    },
+    {
+      "chunk_id": "safety_notes_013",
+      "topic": "safety_notes",
+      "heading": "Emergency Contacts",
+      "text": "UK Coastguard: 999 (emergency) or 02392 552100 (non-emergency) VHF Channel 16: universal distress channel; monitored by all vessels and coastguard RNLI: the RNLI operates lifeboat stations around the UK coastline; call 999 to activate",
+      "word_count": 34,
+      "embedding": null
+    },
+    {
+      "chunk_id": "safety_notes_014",
+      "topic": "safety_notes",
+      "heading": "Emergency Contacts",
+      "text": "If you see someone in difficulty in the water, call 999 immediately and throw any available buoyancy aid (life ring, fender, even a sealed plastic bottle) towards them. Do not enter the water yourself unless you are a trained lifesaver — the majority of drowning deaths in coastal incidents involve would-be rescuers.",
+      "word_count": 52,
+      "embedding": null
+    },
+    {
+      "chunk_id": "safety_notes_015",
+      "topic": "safety_notes",
+      "heading": "Equipment Checklist",
+      "text": "Before any sea fishing trip carry: Tide table for your location (printed or downloaded, not relying solely on phone signal) Mobile phone in a waterproof container, fully charged First aid kit including plasters, wound closure strips, and antiseptic Knife for cutting line (not for use as a weapon; carry it safely) Forceps or pliers for unhooking fish and removing embedded hooks Warm clothing and waterproof jacket even in summer — sea temperatures remain cold and wind chill is significant Water and food for sessions over 3 hours Head torch (night sessions) with spare batteries",
+      "word_count": 94,
+      "embedding": null
+    },
+    {
+      "chunk_id": "species_activity_001",
+      "topic": "species_activity",
+      "heading": "Bass (Dicentrarchus labrax)",
+      "text": "Bass are the most prized inshore species in the UK. They are warm-water fish: activity increases significantly once sea temperatures climb above 12°C, typically from May in the south-west and June further north.",
+      "word_count": 33,
+      "embedding": null
+    },
+    {
+      "chunk_id": "species_activity_002",
+      "topic": "species_activity",
+      "heading": "Bass (Dicentrarchus labrax)",
+      "text": "Best conditions for Bass: Flood tide over shallow rocky ground, beaches, and estuary mouths Dawn and dusk in clear summer conditions; overcast days allow all-day feeding Water temperatures between 14–20°C Wave action that creates white-water surf over sandy beaches Strong tidal flow around headlands and through estuary channels",
+      "word_count": 48,
+      "embedding": null
+    },
+    {
+      "chunk_id": "species_activity_003",
+      "topic": "species_activity",
+      "heading": "Bass (Dicentrarchus labrax)",
+      "text": "Bass move inshore from April and are best from May through October in the south-west, with peak fishing often in September when fish have been feeding all summer. They migrate offshore as water temperature drops below 10°C in November.",
+      "word_count": 39,
+      "embedding": null
+    },
+    {
+      "chunk_id": "species_activity_004",
+      "topic": "species_activity",
+      "heading": "Cod (Gadus morhua)",
+      "text": "Cod are a classic cold-water target, moving inshore on UK east and north coasts from October through March. Numbers have declined significantly from historic highs, but quality Codling are still taken from Yorkshire, Northumberland, Scottish east coast, and some south-coast locations.",
+      "word_count": 41,
+      "embedding": null
+    },
+    {
+      "chunk_id": "species_activity_005",
+      "topic": "species_activity",
+      "heading": "Cod (Gadus morhua)",
+      "text": "Best conditions for Cod: Cold, coloured water following rough weather — stirs up food on the seabed Night tides over spring neaps produce the most consistent catches Large baits: whole squid, peeler crab, cocktail baits Clean sandy or rough ground from harbours, piers, and beaches Slack or slow tidal periods allow fish to feed without fighting current",
+      "word_count": 57,
+      "embedding": null
+    },
+    {
+      "chunk_id": "species_activity_006",
+      "topic": "species_activity",
+      "heading": "Cod (Gadus morhua)",
+      "text": "Offshore Cod are available year-round from northern wreck marks but true inshore sport is winter-only.",
+      "word_count": 15,
+      "embedding": null
+    },
+    {
+      "chunk_id": "species_activity_007",
+      "topic": "species_activity",
+      "heading": "Mackerel (Scomber scombrus)",
+      "text": "Mackerel arrive in inshore UK waters from June and depart in September or October. They are shoaling pelagic fish that travel in huge numbers near the surface during summer months. Mackerel are often the first species a beginner catches and are excellent eating.",
+      "word_count": 43,
+      "embedding": null
+    },
+    {
+      "chunk_id": "species_activity_008",
+      "topic": "species_activity",
+      "heading": "Mackerel (Scomber scombrus)",
+      "text": "Best conditions for Mackerel: Clear water and surface temperatures above 15°C Look for working seabirds — terns diving indicate a Mackerel shoal below Simple feather traces or spinners worked fast near the surface Most active in morning and evening, but will feed all day in good conditions Common from piers, harbour walls, and charter boats from June to September",
+      "word_count": 59,
+      "embedding": null
+    },
+    {
+      "chunk_id": "species_activity_009",
+      "topic": "species_activity",
+      "heading": "Mackerel (Scomber scombrus)",
+      "text": "Mackerel are also essential as fresh bait for Tope, Conger, Shark, and large Pollack.",
+      "word_count": 14,
+      "embedding": null
+    },
+    {
+      "chunk_id": "species_activity_010",
+      "topic": "species_activity",
+      "heading": "Pollack (Pollachius pollachius)",
+      "text": "Pollack are one of the best-fighting reef and wreck species in UK waters. They are present year-round on deep rocky ground but move closer inshore and to shallower reefs from April to October when water temperature rises.",
+      "word_count": 37,
+      "embedding": null
+    },
+    {
+      "chunk_id": "species_activity_011",
+      "topic": "species_activity",
+      "heading": "Pollack (Pollachius pollachius)",
+      "text": "Best conditions for Pollack: Broken ground, kelp edges, and wreck marks in 10–40 metres Low-light periods: early morning and late evening are most productive Slack water or weak current — Pollack ambush prey rather than chasing it in strong current Slowly worked soft-plastic lures and natural sandeel on a flying collar",
+      "word_count": 51,
+      "embedding": null
+    },
+    {
+      "chunk_id": "species_activity_012",
+      "topic": "species_activity",
+      "heading": "Pollack (Pollachius pollachius)",
+      "text": "Larger specimens (over 4 kg) are almost exclusively found on deep offshore wrecks. Shore-caught Pollack to 2 kg are common from rocky headlands and cliff marks on the flood tide.",
+      "word_count": 30,
+      "embedding": null
+    },
+    {
+      "chunk_id": "species_activity_013",
+      "topic": "species_activity",
+      "heading": "Flounder (Platichthys flesus)",
+      "text": "Flounder are a beginner-friendly species that tolerate very low salinity, making them the dominant flatfish in estuaries. They are present year-round in estuaries but are most actively targeted from October to April.",
+      "word_count": 32,
+      "embedding": null
+    },
+    {
+      "chunk_id": "species_activity_014",
+      "topic": "species_activity",
+      "heading": "Flounder (Platichthys flesus)",
+      "text": "Best conditions for Flounder: Estuarine mud and sand in 1–4 metres of water Flood and ebb channels; fish the gully edges Ragworm is the most reliable bait, with live marine worms outperforming frozen Often found very close to the bank — casting only 10–20 metres can be enough Cold water improves catches; summer Flounder are smaller and less numerous",
+      "word_count": 59,
+      "embedding": null
+    },
+    {
+      "chunk_id": "species_activity_015",
+      "topic": "species_activity",
+      "heading": "Sea Bream (Black Bream, Spondyliosoma cantharus)",
+      "text": "Black Bream arrive on south coast reefs and wrecks from May, driven inshore by warming water to spawn. They provide excellent sport on light tackle and are found in tight shoals.",
+      "word_count": 31,
+      "embedding": null
+    },
+    {
+      "chunk_id": "species_activity_016",
+      "topic": "species_activity",
+      "heading": "Sea Bream (Black Bream, Spondyliosoma cantharus)",
+      "text": "Best conditions for Bream: Rocky reef and wreck in 10–25 metres; respond poorly to sandy ground Small hooks (size 1–2) and light traces — Bream have small, fussy mouths Slow drifts produce better results than anchoring in most situations Warm water (above 14°C) is essential; April marks the earliest arrival Peak catches: June–August from south coast charter marks",
+      "word_count": 58,
+      "embedding": null
+    },
+    {
+      "chunk_id": "species_activity_017",
+      "topic": "species_activity",
+      "heading": "Wrasse (Labrus bergylta)",
+      "text": "Ballan Wrasse are the most common large Wrasse in UK waters, reaching 4 kg on productive south and west coast marks. They are extremely colourful, strong fighters over rocky ground, and are exclusively a warm-water target.",
+      "word_count": 36,
+      "embedding": null
+    },
+    {
+      "chunk_id": "species_activity_018",
+      "topic": "species_activity",
+      "heading": "Wrasse (Labrus bergylta)",
+      "text": "Best conditions for Wrasse: Dense kelp and rocky ground in 2–10 metres depth Warm, settled conditions; Wrasse become lethargic in cold water below 10°C Live or fresh crab, prawn, and ragworm close to rocky structures Active from May to October; peak sport July and August Light float or LRF (Light Rock Fishing) tactics with small lures",
+      "word_count": 56,
+      "embedding": null
+    },
+    {
+      "chunk_id": "species_activity_019",
+      "topic": "species_activity",
+      "heading": "Tope (Galeorhinus galeus)",
+      "text": "Tope are the UK's most accessible shark species, growing to 25 kg. They arrive on sandy offshore grounds from May and are almost exclusively caught from boats. Best conditions for Tope: Sandy or mixed ground offshore in 15–40 metres Whole fresh Mackerel or Herring on a running trace Last two hours of the flood tide concentrates fish in sandy gullies May to August peak; some marks fish into September Strong tackle essential: 30–50 lb class rods with 80 lb mono trace",
+      "word_count": 81,
+      "embedding": null
+    },
+    {
+      "chunk_id": "species_activity_020",
+      "topic": "species_activity",
+      "heading": "Conger Eel (Conger conger)",
+      "text": "Conger Eels are the heaviest fish caught by UK shore and boat anglers, with specimens exceeding 50 kg from deep wrecks. They are year-round but most active in summer. Best conditions for Conger: Rocky ground, harbour walls, and wreck marks after dark Strong baits: whole Mackerel, large squid, presented on heavy wire trace Last of the ebb and first of the flood — Conger follow bait fish on the tide Summer nights produce the best shore Conger from Cornwall and south Wales Boat fishing produces the largest specimens from deep water wrecks",
+      "word_count": 92,
+      "embedding": null
+    },
+    {
+      "chunk_id": "species_activity_021",
+      "topic": "species_activity",
+      "heading": "Whiting (Merlangius merlangus)",
+      "text": "Whiting are a common winter catch from piers and beaches, often accompanying Cod in cold-water conditions. They are a useful sport fish and excellent bait for Tope and Conger. Best conditions for Whiting: Sandy and mixed seabed in 5–20 metres October to February; peak December–January Lugworm and ragworm on size 1/0–2/0 hooks Often caught alongside Codling on night tides over spring neaps",
+      "word_count": 62,
+      "embedding": null
+    },
+    {
+      "chunk_id": "tide_basics_001",
+      "topic": "tide_basics",
+      "heading": "Understanding the Tidal Cycle",
+      "text": "UK coastal waters experience a semidiurnal tidal pattern: two high waters and two low waters roughly every 24 hours and 50 minutes. The extra 50 minutes each day means high water occurs progressively later each day, cycling through all times of day over two weeks.",
+      "word_count": 45,
+      "embedding": null
+    },
+    {
+      "chunk_id": "tide_basics_002",
+      "topic": "tide_basics",
+      "heading": "Understanding the Tidal Cycle",
+      "text": "The tidal range — the height difference between high and low water — varies enormously around the UK. The Bristol Channel has the second-largest tidal range in the world, regularly exceeding 12 metres at springs. By contrast, the North Sea coast around East Anglia sees a range of only 3–4 metres.",
+      "word_count": 51,
+      "embedding": null
+    },
+    {
+      "chunk_id": "tide_basics_003",
+      "topic": "tide_basics",
+      "heading": "Spring Tides and Neap Tides",
+      "text": "Spring tides occur twice each lunar month, around the time of the new moon and full moon. At springs, the gravitational pull of the sun and moon are aligned, producing a stronger combined force. The result is higher high waters, lower low waters, and faster tidal currents.",
+      "word_count": 47,
+      "embedding": null
+    },
+    {
+      "chunk_id": "tide_basics_004",
+      "topic": "tide_basics",
+      "heading": "Spring Tides and Neap Tides",
+      "text": "Neap tides occur at the quarter moons. The sun and moon are pulling at right angles, partially cancelling each other out. Neap tides have a smaller range and gentler currents.",
+      "word_count": 30,
+      "embedding": null
+    },
+    {
+      "chunk_id": "tide_basics_005",
+      "topic": "tide_basics",
+      "heading": "Spring Tides and Neap Tides",
+      "text": "For anglers, spring tides mean: Stronger currents that stir up the seabed and dislodge food items Greater water movement that triggers predatory behaviour in Bass and Cod More turbid water that gives fish confidence to feed in daylight Higher high water that allows access to marks only reachable at springs",
+      "word_count": 50,
+      "embedding": null
+    },
+    {
+      "chunk_id": "tide_basics_006",
+      "topic": "tide_basics",
+      "heading": "Spring Tides and Neap Tides",
+      "text": "Neap tides are associated with: Clearer, calmer water — better for clear-water species like Wrasse and Bream Less water movement — ideal for float fishing and light tackle More predictable conditions for anchoring a charter boat",
+      "word_count": 36,
+      "embedding": null
+    },
+    {
+      "chunk_id": "tide_basics_007",
+      "topic": "tide_basics",
+      "heading": "The Rule of Twelfths",
+      "text": "Tidal flow is not constant throughout the cycle. It builds slowly from slack water, reaches maximum speed around mid-tide, then slows again. The Rule of Twelfths describes this: Hours 1 and 6: 1/12 of total range (slowest flow — near slack water) Hours 2 and 5: 2/12 of total range Hours 3 and 4: 3/12 of total range (fastest flow — maximum current)",
+      "word_count": 63,
+      "embedding": null
+    },
+    {
+      "chunk_id": "tide_basics_008",
+      "topic": "tide_basics",
+      "heading": "The Rule of Twelfths",
+      "text": "Practically: fish tend to feed most actively during the middle two hours of each tide, when current is strong and oxygenated water is moving fastest over feeding grounds.",
+      "word_count": 28,
+      "embedding": null
+    },
+    {
+      "chunk_id": "tide_basics_009",
+      "topic": "tide_basics",
+      "heading": "Flood and Ebb",
+      "text": "The flood tide is when water is rising towards high water. The ebb tide is when water is falling towards low water. Many species have a clear preference: Bass: classic flood-tide predator; feeds aggressively as water pushes over shallow ground and estuary mouths Flounder: often feeds best on the first two hours of the flood and last two of the ebb in estuaries Cod and Whiting: less tide-sensitive but often feed better on a running tide than at slack Mullet: frequently enter harbour walls and estuaries on the flood; retreat on the ebb",
+      "word_count": 93,
+      "embedding": null
+    },
+    {
+      "chunk_id": "tide_basics_010",
+      "topic": "tide_basics",
+      "heading": "Flood and Ebb",
+      "text": "Slack water — the brief period around high or low water when current is minimal — produces mixed results. Some anglers find it a dead period; others target Wrasse and reef fish during slack when bait can be presented without being swept away immediately.",
+      "word_count": 44,
+      "embedding": null
+    },
+    {
+      "chunk_id": "tide_basics_011",
+      "topic": "tide_basics",
+      "heading": "Reading Tide Tables",
+      "text": "Tide table times are given for a Standard Port (Dover, Liverpool, Avonmouth, etc.). Secondary ports use a time difference added to the standard port prediction. For example, Falmouth is approximately 6 hours before Dover HW.",
+      "word_count": 35,
+      "embedding": null
+    },
+    {
+      "chunk_id": "tide_basics_012",
+      "topic": "tide_basics",
+      "heading": "Reading Tide Tables",
+      "text": "Always account for British Summer Time: tide tables are published in UTC. Add one hour between late March and late October.",
+      "word_count": 21,
+      "embedding": null
+    }
+  ]
+}
