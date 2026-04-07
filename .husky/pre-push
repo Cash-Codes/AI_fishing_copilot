@@ -1,0 +1,14 @@
+# Run all tests before every push.
+# If either suite fails the push is aborted — fix the tests first.
+#
+# Uses explicit binary paths because husky runs with a stripped PATH
+# that doesn't include nvm-managed node or global npm binaries.
+
+set -e  # stop immediately if any command exits non-zero
+
+echo "▶ Running frontend tests…"
+cd frontend && node_modules/.bin/jest --passWithNoTests
+cd ..
+
+echo "▶ Running backend tests…"
+cd backend && .venv/bin/pytest tests/ -q

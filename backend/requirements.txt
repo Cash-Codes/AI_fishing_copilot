@@ -7,3 +7,11 @@ pydantic==2.11.3         # Data validation — FastAPI uses this for request/res
 
 # ── Environment ───────────────────────────────────────────────────────────────
 python-dotenv==1.1.0     # Loads .env files so we can read environment variables
+
+# ── Testing ───────────────────────────────────────────────────────────────────
+pytest==8.3.5            # Test runner
+httpx==0.28.1            # ASGI test client — lets pytest call FastAPI without a real server
+pytest-asyncio==0.26.0   # Required if any tests are async (not needed yet, good to have)
+
+# ── Linting ───────────────────────────────────────────────────────────────────
+ruff==0.11.4             # Fast Python linter + formatter (replaces flake8/isort)
