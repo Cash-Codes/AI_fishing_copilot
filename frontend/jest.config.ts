@@ -25,7 +25,7 @@ const config: Config = {
     // Exact match for every @/ path used in tests and source files.
     // Exact matches have no capture groups so there is no $1 substitution —
     // the most common source of jest.mock() resolution failures in CI.
-    "^@/lib/api$": "<rootDir>/lib/api",
+    "^@/lib/api$": "<rootDir>/lib/api.ts",
   },
   testPathIgnorePatterns: ["<rootDir>/node_modules/", "<rootDir>/.next/"],
   collectCoverageFrom: ["app/**/*.{ts,tsx}", "lib/**/*.{ts,tsx}", "!**/*.d.ts"],
