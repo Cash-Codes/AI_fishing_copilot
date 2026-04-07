@@ -28,23 +28,18 @@ logger = logging.getLogger(__name__)
 # triggering the actual import (which adds 100+ seconds on cold-start).
 vertexai = None
 GenerativeModel = None
-GenerationConfig = None
 
 
 def _ensure_vertexai() -> None:
     """Import vertexai on first use. No-op on subsequent calls."""
-    global vertexai, GenerativeModel, GenerationConfig
+    global vertexai, GenerativeModel
     if vertexai is not None:
         return
     try:
         import vertexai as _vtx
-        from vertexai.generative_models import (
-            GenerationConfig as _GC,
-            GenerativeModel as _GM,
-        )
+        from vertexai.generative_models import GenerativeModel as _GM
         vertexai = _vtx
         GenerativeModel = _GM
-        GenerationConfig = _GC
     except ImportError as exc:  # pragma: no cover
         raise RuntimeError("google-cloud-aiplatform is not installed") from exc
 
@@ -157,7 +152,7 @@ def _vertex_generate(ctx: ExplanationContext) -> ExplanationResult:
     prompt = _build_prompt(ctx)
     response = model.generate_content(
         prompt,
-        generation_config=GenerationConfig(
+        generation_config=vertexai.generative_models.GenerationConfig(
             temperature=0.4,      # slightly creative but mostly factual
             max_output_tokens=4096,
             candidate_count=1,
