@@ -7,7 +7,7 @@
 import math
 from typing import Tuple
 
-from app.data.loader import Harbour, get_harbours
+from app.data.loader import Harbour, get_harbour_by_id, get_harbours
 
 # ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -62,6 +62,9 @@ def nearest_harbour(lat: float, lon: float) -> Tuple[Harbour, float]:
     """
     harbours = get_harbours()
 
+    if not harbours:
+        raise ValueError("No harbours available in dataset")
+
     best_harbour = harbours[0]
     best_dist = haversine_km(lat, lon, harbours[0].latitude, harbours[0].longitude)
 
@@ -79,11 +82,7 @@ def default_harbour() -> Tuple[Harbour, float]:
 
     The distance is returned as -1.0 to indicate it is not a real measurement.
     """
-    from app.data.loader import get_harbour_by_id
-
     harbour = get_harbour_by_id(_DEFAULT_HARBOUR_ID)
-    # get_harbour_by_id only returns None when the id is not in the dataset —
-    # _DEFAULT_HARBOUR_ID is a known-good constant so this assertion will
-    # never fire in practice.
-    assert harbour is not None, f"Default harbour '{_DEFAULT_HARBOUR_ID}' missing from dataset"
+    if harbour is None:
+        raise RuntimeError(f"Default harbour '{_DEFAULT_HARBOUR_ID}' missing from dataset")
     return harbour, -1.0
