@@ -1,0 +1,18 @@
+# Run all tests before every push.
+# If either suite fails the push is aborted — fix the tests first.
+#
+# Uses explicit binary paths because husky runs with a stripped PATH
+# that doesn't include nvm-managed node or global npm binaries.
+
+set -e  # stop immediately if any command exits non-zero
+
+echo "▶ Running frontend tests…"
+# --ci      disables watch mode and fails the process on any test suite error,
+#           including module resolution failures. Without this flag Jest can
+#           exit 0 even when suites fail to load.
+# --bail    stops after the first failure so you get signal fast.
+cd frontend && node_modules/.bin/jest --ci --bail --passWithNoTests
+cd ..
+
+echo "▶ Running backend tests…"
+cd backend && .venv/bin/pytest tests/ -q

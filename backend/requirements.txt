@@ -1,0 +1,28 @@
+# ── Web framework ─────────────────────────────────────────────────────────────
+fastapi==0.115.12        # The web framework — handles routing, validation, docs
+uvicorn[standard]==0.34.0  # ASGI server — runs the FastAPI app locally
+
+# ── Validation ────────────────────────────────────────────────────────────────
+pydantic==2.11.3         # Data validation — FastAPI uses this for request/response models
+pydantic-settings==2.7.1 # Settings management — loads config from env vars and .env files
+
+# ── Environment ───────────────────────────────────────────────────────────────
+python-dotenv==1.1.0     # Loads .env files so we can read environment variables
+
+# ── Testing ───────────────────────────────────────────────────────────────────
+pytest==8.3.5            # Test runner
+httpx==0.28.1            # ASGI test client — lets pytest call FastAPI without a real server
+pytest-asyncio==0.26.0   # Required if any tests are async (not needed yet, good to have)
+
+# ── AI / Vertex AI ────────────────────────────────────────────────────────────
+# Needs GOOGLE_CLOUD_PROJECT (and optionally GOOGLE_APPLICATION_CREDENTIALS).
+# If neither is set the app falls back to template explanations automatically.
+google-cloud-aiplatform==1.145.0  # includes the `vertexai` generative models SDK
+
+# ── Retrieval / Embeddings ────────────────────────────────────────────────────
+numpy==2.0.2             # Array ops used directly in retriever.py (also a faiss/fastembed dep); last version supporting Python 3.9
+faiss-cpu==1.13.0        # Vector similarity search (CPU-only build, no GPU needed)
+fastembed==0.7.4         # Local ONNX-based embeddings — no PyTorch, no API key
+
+# ── Linting ───────────────────────────────────────────────────────────────────
+ruff==0.11.4             # Fast Python linter + formatter (replaces flake8/isort)

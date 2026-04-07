@@ -1,0 +1,14 @@
+{
+  "name": "ai-fishing-copilot",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "prepare": "husky",
+    "dev": "concurrently --names \"frontend,backend\" --prefix-colors \"cyan,yellow\" \"cd frontend && npm run dev\" \"cd backend && .venv/bin/uvicorn app.main:app --reload\"",
+    "test": "npm test --prefix frontend"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1",
+    "husky": "^9.1.7"
+  }
+}

@@ -1,0 +1,14 @@
+# Abort the commit on any lint failure (frontend or backend).
+set -e
+
+# ── Frontend: Prettier + ESLint via lint-staged ───────────────────────────────
+# Use node_modules/.bin directly — husky runs with a stripped PATH that
+# doesn't include npx, nvm, or Homebrew binaries.
+cd frontend && node_modules/.bin/lint-staged
+cd ..
+
+# ── Backend: Ruff linter ──────────────────────────────────────────────────────
+# Only run if any staged files are inside backend/ to keep commits fast.
+if git diff --cached --name-only | grep -q "^backend/"; then
+  cd backend && .venv/bin/ruff check .
+fi

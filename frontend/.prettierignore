@@ -1,0 +1,5 @@
+# Don't format generated or dependency files
+node_modules
+.next
+out
+public
