@@ -1,0 +1,82 @@
+[
+  {
+    "id": "falmouth",
+    "name": "Falmouth Harbour",
+    "postcode": "TR11 3JT",
+    "latitude": 50.1528,
+    "longitude": -5.0664,
+    "short_description": "Sheltered deep-water harbour on the Fal estuary. Good year-round Bass fishing from the quay walls and excellent Mackerel runs in summer."
+  },
+  {
+    "id": "newlyn",
+    "name": "Newlyn Harbour",
+    "postcode": "TR18 5HW",
+    "latitude": 50.1013,
+    "longitude": -5.5454,
+    "short_description": "One of England's busiest working fishing harbours. Strong tidal flow outside the breakwater produces reliable Pollack and Wrasse marks."
+  },
+  {
+    "id": "padstow",
+    "name": "Padstow Harbour",
+    "postcode": "PL28 8AQ",
+    "latitude": 50.5387,
+    "longitude": -4.9388,
+    "short_description": "Picturesque estuary harbour on the Camel. Famous for Flounder and Bass in the estuary channels, with Cod offshore in winter."
+  },
+  {
+    "id": "looe",
+    "name": "Looe Harbour",
+    "postcode": "PL13 1DX",
+    "latitude": 50.3520,
+    "longitude": -4.4570,
+    "short_description": "Charter fishing hub for Shark, Conger Eel, and Bream. The East Looe River mouth is a productive Bass mark on the flood tide."
+  },
+  {
+    "id": "brixham",
+    "name": "Brixham Harbour",
+    "postcode": "TQ5 8AW",
+    "latitude": 50.3943,
+    "longitude": -3.5140,
+    "short_description": "South Devon trawler port with Torbay providing sheltered inshore marks. Excellent Plaice and Bream grounds within two miles offshore."
+  },
+  {
+    "id": "dartmouth",
+    "name": "Dartmouth Harbour",
+    "postcode": "TQ6 9BH",
+    "latitude": 50.3516,
+    "longitude": -3.5768,
+    "short_description": "Deep estuary with strong tidal flow. Mullet shoal under the town pontoon in summer; Bull Huss and Conger in the outer estuary at night."
+  },
+  {
+    "id": "weymouth",
+    "name": "Weymouth Harbour",
+    "postcode": "DT4 8TP",
+    "latitude": 50.6115,
+    "longitude": -2.4520,
+    "short_description": "Popular charter destination for the Shambles Bank reef. Produces Bream, Plaice, and Turbot; Cod move inshore from November."
+  },
+  {
+    "id": "poole",
+    "name": "Poole Quay",
+    "postcode": "BH15 1HJ",
+    "latitude": 50.7143,
+    "longitude": -1.9872,
+    "short_description": "Second-largest natural harbour in the world. Sheltered flats hold Flounder and Bass all year; Poole Bay excellent for evening Bass sessions."
+  },
+  {
+    "id": "brighton",
+    "name": "Brighton Marina",
+    "postcode": "BN2 5UF",
+    "latitude": 50.8129,
+    "longitude": -0.0993,
+    "short_description": "Man-made marina with deep access channel. Cod and Whiting in winter from the marina walls; Bass and Garfish in summer around the breakwaters."
+  },
+  {
+    "id": "whitby",
+    "name": "Whitby Harbour",
+    "postcode": "YO22 4AS",
+    "latitude": 54.4877,
+    "longitude": -0.6140,
+    "short_description": "North Yorkshire working harbour with outstanding Cod fishing from October to February. Pier fishing produces Codling, Coalfish, and Whiting on night tides."
+  }
+]
