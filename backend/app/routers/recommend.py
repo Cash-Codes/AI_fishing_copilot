@@ -22,6 +22,7 @@ from app.models.request import RecommendRequest
 from app.models.response import RecommendResponse
 from app.services.harbour import default_harbour, nearest_harbour
 from app.services.postcode import resolve_postcode
+from app.services.scoring import score_recommendation
 
 logger = logging.getLogger(__name__)
 
@@ -74,8 +75,24 @@ def get_recommendation(body: RecommendRequest) -> RecommendResponse:
         )
         harbour, distance_km = default_harbour()
 
-    # ── Step 2: build response ─────────────────────────────────────────────────
-    # The explanation and window are still placeholder text.
+    # ── Step 2: score the recommendation ─────────────────────────────────────
+    score = score_recommendation(
+        distance_km=distance_km,
+        harbour=harbour,
+        species=body.species,
+        preference=body.preference,
+    )
+    logger.info(
+        "Score | dist=%.2f species=%.2f weights=(%.2f, %.2f) → confidence=%.4f",
+        score.distance_score,
+        score.species_score,
+        score.distance_weight,
+        score.species_weight,
+        score.confidence_score,
+    )
+
+    # ── Step 3: build response ────────────────────────────────────────────────
+    # The explanation and time window are still placeholder text.
     # They will be replaced by a real AI call in a later iteration.
 
     distance_note = (
@@ -101,7 +118,7 @@ def get_recommendation(body: RecommendRequest) -> RecommendResponse:
         input_postcode=body.postcode,
         nearest_harbour=harbour.name,
         recommendation_window="Saturday 06:00 – 10:00",
-        confidence_score=0.82,
+        confidence_score=score.confidence_score,
         explanation=explanation,
         used_fallback=used_fallback,
         retrieved_notes=mock_notes,
