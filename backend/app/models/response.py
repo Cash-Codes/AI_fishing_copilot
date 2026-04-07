@@ -58,6 +58,42 @@ class RecommendResponse(BaseModel):
         description="Relevant notes retrieved from the knowledge base.",
     )
 
+    # ── Conditions fields (weather + tides) ───────────────────────────────────
+    # All optional so existing tests that build minimal responses don't break.
+
+    wind_speed_knots: Optional[float] = Field(
+        default=None,
+        description="Current wind speed at the harbour in knots.",
+    )
+    wind_direction: Optional[str] = Field(
+        default=None,
+        description="Wind direction as a compass point (e.g. 'SW').",
+    )
+    wind_description: Optional[str] = Field(
+        default=None,
+        description="Beaufort plain-English wind description.",
+    )
+    wave_height_m: Optional[float] = Field(
+        default=None,
+        description="Significant wave height in metres.",
+    )
+    sea_state: Optional[str] = Field(
+        default=None,
+        description="Douglas scale sea-state description (e.g. 'Slight').",
+    )
+    tide_phase: Optional[str] = Field(
+        default=None,
+        description="Current tidal phase: Flood, High Water, Ebb, or Low Water.",
+    )
+    spring_or_neap: Optional[str] = Field(
+        default=None,
+        description="Whether it is a spring or neap tide.",
+    )
+    conditions_summary: Optional[str] = Field(
+        default=None,
+        description="One-sentence summary of current conditions.",
+    )
+
 
 class HealthResponse(BaseModel):
     """Returned by GET /health to confirm the service is running."""
