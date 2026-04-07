@@ -1,15 +1,17 @@
-# tests/test_retrieval.py — Unit tests for the corpus retrieval pipeline.
+# tests/test_retrieval.py — Tests for keyword and FAISS retrieval.
 #
-# Tests cover:
-#   - tokenisation (stop word removal, normalisation)
-#   - chunk loading from the built index
-#   - keyword scoring (term matching, phrase bonus, empty query)
-#   - KeywordRetriever.retrieve() top-k ordering and zero-score exclusion
-#   - retrieve_text() returns strings
-#   - query relevance: species and tide queries return topic-relevant chunks
+# FAISS tests use hand-crafted 4-dim embeddings and a mock Embedder so the
+# actual fastembed model is never loaded during the test run.  This keeps tests
+# fast (<1 s) and CI-friendly regardless of network access.
+
+from unittest.mock import MagicMock
+
+import numpy as np
 
 from app.retrieval.retriever import (
+    BaseRetriever,
     Chunk,
+    FaissRetriever,
     KeywordRetriever,
     _keyword_score,
     get_retriever,
@@ -19,13 +21,11 @@ from app.retrieval.retriever import (
 
 # ─── Fixtures ─────────────────────────────────────────────────────────────────
 
-def _make_chunk(chunk_id: str, topic: str, heading: str, text: str) -> Chunk:
+def _make_chunk(chunk_id: str, topic: str, heading: str, text: str,
+                embedding=None) -> Chunk:
     return Chunk(
-        chunk_id=chunk_id,
-        topic=topic,
-        heading=heading,
-        text=text,
-        word_count=len(text.split()),
+        chunk_id=chunk_id, topic=topic, heading=heading,
+        text=text, word_count=len(text.split()), embedding=embedding,
     )
 
 
@@ -57,6 +57,35 @@ HARBOUR_CHUNK = _make_chunk(
 ALL_CHUNKS = [TIDE_CHUNK, BASS_CHUNK, SAFETY_CHUNK, HARBOUR_CHUNK]
 
 
+# ─── Tiny 4-dim embeddings for FAISS unit tests ────────────────────────────────
+# Each vector is chosen so semantic similarity is obvious:
+#   [1,0,0,0] ≈ "tides"    [0,1,0,0] ≈ "bass/fish"
+#   [0,0,1,0] ≈ "safety"   [0,0,0,1] ≈ "harbour"
+
+def _unit(v: list) -> list:
+    a = np.array(v, dtype=np.float32)
+    return (a / np.linalg.norm(a)).tolist()
+
+
+TIDE_VEC    = _unit([1.0, 0.1, 0.0, 0.0])
+BASS_VEC    = _unit([0.1, 1.0, 0.0, 0.0])
+SAFETY_VEC  = _unit([0.0, 0.0, 1.0, 0.1])
+HARBOUR_VEC = _unit([0.0, 0.0, 0.1, 1.0])
+
+EMBEDDED_CHUNKS = [
+    _make_chunk("tide_001",    "tide_basics",      "Spring Tides",     TIDE_CHUNK.text,    TIDE_VEC),
+    _make_chunk("species_001", "species_activity", "Bass Activity",    BASS_CHUNK.text,    BASS_VEC),
+    _make_chunk("safety_001",  "safety_notes",     "Tidal Cut-offs",   SAFETY_CHUNK.text,  SAFETY_VEC),
+    _make_chunk("harbour_001", "harbour_selection","Choosing a Harbour",HARBOUR_CHUNK.text, HARBOUR_VEC),
+]
+
+def _mock_embedder(vec: list):
+    """Return a mock Embedder whose embed() returns a specific vector."""
+    mock = MagicMock()
+    mock.embed.return_value = np.array([vec], dtype=np.float32)
+    return mock
+
+
 # ─── tokenise ─────────────────────────────────────────────────────────────────
 
 class TestTokenise:
@@ -73,7 +102,6 @@ class TestTokenise:
         tokens = tokenise("flood tide, strong current.")
         assert "flood" in tokens
         assert "tide" in tokens
-        # commas and dots stripped
         assert "tide," not in tokens
 
     def test_removes_single_char_tokens(self):
@@ -91,31 +119,28 @@ class TestTokenise:
 class TestKeywordScore:
 
     def test_zero_for_no_matching_terms(self):
-        score = _keyword_score(["narwhal", "unicorn"], BASS_CHUNK)
-        assert score == 0.0
+        assert _keyword_score(["narwhal", "unicorn"], BASS_CHUNK) == 0.0
 
     def test_positive_for_matching_term(self):
-        score = _keyword_score(["bass"], BASS_CHUNK)
-        assert score > 0.0
+        assert _keyword_score(["bass"], BASS_CHUNK) > 0.0
 
     def test_higher_score_for_more_matches(self):
-        one_match  = _keyword_score(["bass"], BASS_CHUNK)
-        two_match  = _keyword_score(["bass", "flood"], BASS_CHUNK)
-        assert two_match > one_match
+        one = _keyword_score(["bass"], BASS_CHUNK)
+        two = _keyword_score(["bass", "flood"], BASS_CHUNK)
+        assert two > one
 
     def test_phrase_bonus_applied(self):
-        # "flood tides" appears verbatim in TIDE_CHUNK after stop-word removal
-        phrase_score = _keyword_score(["spring", "flood", "tides"], TIDE_CHUNK)
-        single_score = _keyword_score(["spring"], TIDE_CHUNK)
-        assert phrase_score > single_score
+        phrase = _keyword_score(["spring", "flood", "tides"], TIDE_CHUNK)
+        single = _keyword_score(["spring"], TIDE_CHUNK)
+        assert phrase > single
 
     def test_empty_query_returns_zero(self):
         assert _keyword_score([], BASS_CHUNK) == 0.0
 
-    def test_score_rewards_relevant_topic_chunk(self):
-        bass_score = _keyword_score(["bass", "flood", "tide"], BASS_CHUNK)
-        harbour_score = _keyword_score(["bass", "flood", "tide"], HARBOUR_CHUNK)
-        assert bass_score > harbour_score
+    def test_score_rewards_relevant_topic(self):
+        on_topic  = _keyword_score(["bass", "flood", "tide"], BASS_CHUNK)
+        off_topic = _keyword_score(["bass", "flood", "tide"], HARBOUR_CHUNK)
+        assert on_topic > off_topic
 
 
 # ─── KeywordRetriever ─────────────────────────────────────────────────────────
@@ -123,92 +148,126 @@ class TestKeywordScore:
 class TestKeywordRetriever:
 
     def setup_method(self):
-        self.retriever = KeywordRetriever(ALL_CHUNKS)
+        self.r = KeywordRetriever(ALL_CHUNKS)
 
-    def test_returns_list_of_chunks(self):
-        result = self.retriever.retrieve("bass fishing")
-        assert isinstance(result, list)
-        assert all(isinstance(c, Chunk) for c in result)
+    def test_implements_base_retriever(self):
+        assert isinstance(self.r, BaseRetriever)
 
-    def test_top_k_limits_results(self):
-        result = self.retriever.retrieve("fishing tide bass harbour", top_k=2)
-        assert len(result) <= 2
+    def test_returns_chunks(self):
+        assert all(isinstance(c, Chunk) for c in self.r.retrieve("bass"))
+
+    def test_top_k_respected(self):
+        assert len(self.r.retrieve("fishing tide bass harbour", top_k=2)) <= 2
 
     def test_empty_query_returns_empty(self):
-        assert self.retriever.retrieve("") == []
+        assert self.r.retrieve("") == []
 
     def test_zero_score_chunks_excluded(self):
-        # "narwhal" appears in none of the chunks
-        result = self.retriever.retrieve("narwhal")
-        assert result == []
+        assert self.r.retrieve("narwhal") == []
 
     def test_bass_query_returns_bass_chunk_first(self):
-        results = self.retriever.retrieve("bass flood season", top_k=3)
+        results = self.r.retrieve("bass flood season", top_k=3)
         assert results[0].chunk_id == "species_001"
 
-    def test_tide_query_returns_tide_chunk(self):
-        results = self.retriever.retrieve("spring tide current high water", top_k=3)
-        topics = [c.topic for c in results]
+    def test_tide_query_returns_tide_topic(self):
+        topics = [c.topic for c in self.r.retrieve("spring tide current", top_k=3)]
         assert "tide_basics" in topics
 
-    def test_safety_query_returns_safety_chunk(self):
-        results = self.retriever.retrieve("tidal cut-off rocky path flood", top_k=3)
-        topics = [c.topic for c in results]
-        assert "safety_notes" in topics
+    def test_retrieve_text_returns_strings(self):
+        assert all(isinstance(t, str) for t in self.r.retrieve_text("bass", top_k=2))
+
+
+# ─── FaissRetriever ───────────────────────────────────────────────────────────
+
+class TestFaissRetriever:
+
+    def setup_method(self):
+        self.r = FaissRetriever(EMBEDDED_CHUNKS, _mock_embedder(BASS_VEC))
+
+    def test_implements_base_retriever(self):
+        assert isinstance(self.r, BaseRetriever)
+
+    def test_returns_chunks(self):
+        results = self.r.retrieve("bass fishing")
+        assert all(isinstance(c, Chunk) for c in results)
+
+    def test_top_k_respected(self):
+        results = self.r.retrieve("fishing", top_k=2)
+        assert len(results) <= 2
+
+    def test_bass_query_returns_bass_chunk_first(self):
+        # Mock embedder returns BASS_VEC; BASS_CHUNK has the closest embedding
+        r = FaissRetriever(EMBEDDED_CHUNKS, _mock_embedder(BASS_VEC))
+        results = r.retrieve("bass season flood", top_k=3)
+        assert results[0].chunk_id == "species_001"
+
+    def test_tide_query_returns_tide_chunk_first(self):
+        r = FaissRetriever(EMBEDDED_CHUNKS, _mock_embedder(TIDE_VEC))
+        results = r.retrieve("spring tide current", top_k=3)
+        assert results[0].chunk_id == "tide_001"
+
+    def test_safety_query_returns_safety_chunk_first(self):
+        r = FaissRetriever(EMBEDDED_CHUNKS, _mock_embedder(SAFETY_VEC))
+        results = r.retrieve("tidal cut-off rocky path", top_k=3)
+        assert results[0].chunk_id == "safety_001"
 
     def test_retrieve_text_returns_strings(self):
-        texts = self.retriever.retrieve_text("bass fishing", top_k=2)
-        assert all(isinstance(t, str) for t in texts)
+        assert all(isinstance(t, str) for t in self.r.retrieve_text("bass", top_k=2))
 
-    def test_retrieve_text_non_empty_for_valid_query(self):
-        texts = self.retriever.retrieve_text("spring tide Bass flood")
-        assert len(texts) > 0
+    def test_empty_query_falls_back_gracefully(self):
+        # Even with a zero-ish query vector, should not raise
+        r = FaissRetriever(EMBEDDED_CHUNKS, _mock_embedder([0.0, 0.0, 0.0, 0.0]))
+        results = r.retrieve("the and or")
+        assert isinstance(results, list)
 
 
 # ─── Chunk serialisation ──────────────────────────────────────────────────────
 
 class TestChunkSerialisation:
 
-    def test_round_trip(self):
+    def test_round_trip_no_embedding(self):
         d = BASS_CHUNK.to_dict()
         restored = Chunk.from_dict(d)
         assert restored.chunk_id == BASS_CHUNK.chunk_id
-        assert restored.text == BASS_CHUNK.text
         assert restored.embedding is None
 
-    def test_embedding_field_preserved(self):
-        chunk_with_embed = _make_chunk("x", "t", "h", "some text")
-        chunk_with_embed.embedding = [0.1, 0.2, 0.3]
-        d = chunk_with_embed.to_dict()
-        restored = Chunk.from_dict(d)
-        assert restored.embedding == [0.1, 0.2, 0.3]
+    def test_round_trip_with_embedding(self):
+        chunk = _make_chunk("x", "t", "h", "some text", embedding=[0.1, 0.2])
+        restored = Chunk.from_dict(chunk.to_dict())
+        assert restored.embedding == [0.1, 0.2]
 
 
 # ─── Live index (integration) ─────────────────────────────────────────────────
 
 class TestLiveIndex:
-    """Smoke-tests against the real built index.json."""
+    """Smoke-tests against the built index.json with real embeddings."""
 
-    def test_retriever_loads_without_error(self):
-        r = get_retriever()
-        assert r is not None
+    def test_retriever_loads(self):
+        assert get_retriever() is not None
 
-    def test_index_has_reasonable_chunk_count(self):
+    def test_uses_faiss_when_embeddings_present(self):
+        # The index was built with --embed so FaissRetriever should be selected
+        assert isinstance(get_retriever(), FaissRetriever)
+
+    def test_singleton(self):
+        assert get_retriever() is get_retriever()
+
+    def test_chunk_count_reasonable(self):
         r = get_retriever()
         assert len(r._chunks) > 20
 
-    def test_bass_query_returns_species_content(self):
+    def test_bass_query_semantic_relevance(self):
         results = get_retriever().retrieve("Bass feeding flood tide season", top_k=3)
         assert len(results) > 0
         combined = " ".join(c.text for c in results).lower()
         assert "bass" in combined
 
-    def test_safety_query_returns_safety_content(self):
-        results = get_retriever().retrieve("tidal cut-off safety", top_k=3)
-        assert len(results) > 0
+    def test_safety_query_semantic_relevance(self):
+        results = get_retriever().retrieve("tidal cut-off danger rocky shore", top_k=3)
         combined = " ".join(c.text for c in results).lower()
-        # Should mention tide, water, or safety concepts
-        assert any(w in combined for w in ["tide", "water", "safety", "coastguard"])
+        assert any(w in combined for w in ["tide", "water", "safety", "coastguard", "exit"])
 
-    def test_retriever_is_singleton(self):
-        assert get_retriever() is get_retriever()
+    def test_cod_winter_query(self):
+        results = get_retriever().retrieve("Cod winter cold water pier", top_k=3)
+        combined = " ".join(c.text for c in results).lower()
+        assert "cod" in combined

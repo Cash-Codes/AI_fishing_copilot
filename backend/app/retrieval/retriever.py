@@ -1,25 +1,30 @@
-# retrieval/retriever.py — Keyword-based retrieval over the fishing corpus.
+# retrieval/retriever.py — Corpus retrieval: keyword fallback + FAISS semantic search.
 #
-# Architecture is designed so that the keyword scorer can be replaced with an
-# embedding-based scorer (e.g. sentence-transformers, OpenAI text-embedding-3)
-# without changing the Chunk model, the index format, or any calling code.
+# Two concrete retrievers share the same interface (BaseRetriever):
 #
-# Upgrade path to embeddings:
-#   1. Add an `embedding: Optional[List[float]]` field to Chunk (already
-#      reserved in the JSON schema).
-#   2. Replace _keyword_score() with _cosine_score() that reads chunk.embedding.
-#   3. Re-run `scripts/build_index.py --embed` to populate embeddings.
-#   4. Swap `KeywordRetriever` for `EmbeddingRetriever` — same interface.
+#   KeywordRetriever  — BM25-lite scorer, no dependencies beyond stdlib.
+#                       Always available; used when embeddings are absent.
 #
-# The index is read once at import time and cached in a module-level variable.
-# Re-loading requires a server restart, which is acceptable for an MVP where
-# the corpus changes rarely.  A more sophisticated system would watch the file
-# for changes and reload automatically.
+#   FaissRetriever    — Cosine similarity via FAISS IndexFlatIP.
+#                       Used when the index contains embedding vectors.
+#                       Falls back to KeywordRetriever if faiss/fastembed
+#                       are not importable (e.g. stripped-down CI image).
+#
+# Retriever selection is automatic: get_retriever() inspects the index to
+# decide which implementation to return.  Callers never need to know which
+# one they got.
+#
+# Embedding-upgrade checklist (already done):
+#   [x] Chunk.embedding field in data model + JSON schema
+#   [x] _keyword_score() isolated — can be replaced without touching callers
+#   [x] FaissRetriever uses same BaseRetriever interface as KeywordRetriever
+#   [ ] Run: python scripts/build_index.py --embed  to populate embeddings
 
 import json
 import logging
 import math
 import re
+from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from functools import lru_cache
 from pathlib import Path
@@ -30,8 +35,6 @@ logger = logging.getLogger(__name__)
 _INDEX_PATH = Path(__file__).parent / "index.json"
 
 # ── Stop words ────────────────────────────────────────────────────────────────
-# Common words that carry little meaning and would flood scores if counted.
-# Deliberately minimal — this is not an NLP library.
 
 _STOP_WORDS: Set[str] = {
     "a", "an", "the", "and", "or", "but", "in", "on", "at", "to", "for",
@@ -49,29 +52,27 @@ _STOP_WORDS: Set[str] = {
 
 @dataclass
 class Chunk:
-    """A retrievable piece of corpus text with metadata.
+    """A retrievable piece of corpus text.
 
-    The `embedding` field is reserved for a future vector-based upgrade.
-    It is stored as None in the current keyword-only index so adding it later
-    is backward-compatible: existing chunks simply get the field populated.
+    The embedding field holds a pre-computed unit-normalised vector generated
+    by scripts/build_index.py --embed.  It is None in keyword-only indexes.
     """
 
-    chunk_id: str               # e.g. "tide_basics_003"
-    topic: str                  # filename stem: "tide_basics", "safety_notes", …
-    heading: str                # nearest ## heading above this chunk
-    text: str                   # the raw chunk text shown to the user
+    chunk_id: str
+    topic: str
+    heading: str
+    text: str
     word_count: int
     embedding: Optional[List[float]] = field(default=None, repr=False)
 
     def to_dict(self) -> dict:
-        """Serialise to a plain dict for JSON storage."""
         return {
-            "chunk_id":  self.chunk_id,
-            "topic":     self.topic,
-            "heading":   self.heading,
-            "text":      self.text,
+            "chunk_id":   self.chunk_id,
+            "topic":      self.topic,
+            "heading":    self.heading,
+            "text":       self.text,
             "word_count": self.word_count,
-            "embedding": self.embedding,
+            "embedding":  self.embedding,
         }
 
     @classmethod
@@ -86,7 +87,25 @@ class Chunk:
         )
 
 
-# ── Tokenisation ──────────────────────────────────────────────────────────────
+# ── Shared interface ──────────────────────────────────────────────────────────
+
+class BaseRetriever(ABC):
+    """Common interface for all retriever implementations.
+
+    Any class that satisfies this interface can be returned by get_retriever()
+    and used by the recommendation endpoint without modification.
+    """
+
+    @abstractmethod
+    def retrieve(self, query: str, top_k: int = 3) -> List[Chunk]:
+        """Return up to top_k chunks most relevant to the query."""
+
+    def retrieve_text(self, query: str, top_k: int = 3) -> List[str]:
+        """Convenience wrapper: returns the text of each chunk."""
+        return [chunk.text for chunk in self.retrieve(query, top_k=top_k)]
+
+
+# ── Tokenisation (shared by both retrievers) ──────────────────────────────────
 
 def tokenise(text: str) -> List[str]:
     """Lower-case, strip punctuation, remove stop words."""
@@ -94,21 +113,18 @@ def tokenise(text: str) -> List[str]:
     return [w for w in words if w not in _STOP_WORDS and len(w) > 1]
 
 
-# ── Scorer — swap this function to upgrade to embeddings ─────────────────────
+# ── Keyword retriever ─────────────────────────────────────────────────────────
 
 def _keyword_score(query_tokens: List[str], chunk: Chunk) -> float:
     """BM25-lite keyword score.
 
-    This is the function to replace when moving to embeddings:
+    Swap this function (and nothing else) to use a different scoring formula.
+    The equivalent embedding scorer would be:
 
-        def _embedding_score(query_embedding: List[float], chunk: Chunk) -> float:
-            dot = sum(a * b for a, b in zip(query_embedding, chunk.embedding))
-            return dot  # vectors are unit-normalised, so dot == cosine similarity
-
-    Scoring:
-        - Count each query term's occurrences in the chunk.
-        - Normalise by sqrt(word_count) to avoid very long chunks dominating.
-        - Boost by 1.5x if the exact query phrase (≥2 words) appears verbatim.
+        def _cosine_score(query_vec: np.ndarray, chunk: Chunk) -> float:
+            chunk_vec = np.array(chunk.embedding, dtype=np.float32)
+            return float(np.dot(query_vec, chunk_vec))
+            # Vectors are unit-normalised, so dot == cosine similarity.
     """
     if not query_tokens:
         return 0.0
@@ -116,79 +132,126 @@ def _keyword_score(query_tokens: List[str], chunk: Chunk) -> float:
     chunk_lower = chunk.text.lower()
     chunk_tokens = tokenise(chunk.text)
 
-    # Term-frequency component
     tf_score = sum(chunk_tokens.count(t) for t in set(query_tokens))
     normalised = tf_score / max(1, math.sqrt(chunk.word_count))
 
-    # Phrase bonus: reward verbatim multi-word matches
     query_phrase = " ".join(query_tokens)
     phrase_bonus = 1.5 if len(query_tokens) >= 2 and query_phrase in chunk_lower else 1.0
 
     return normalised * phrase_bonus
 
 
-# ── Retriever ─────────────────────────────────────────────────────────────────
-
-class KeywordRetriever:
-    """Retrieve the top-k most relevant corpus chunks for a text query.
-
-    The retriever is stateless after construction — thread-safe and
-    suitable for use as a module-level singleton.
-    """
+class KeywordRetriever(BaseRetriever):
+    """BM25-lite retriever — no external dependencies."""
 
     def __init__(self, chunks: List[Chunk]) -> None:
         self._chunks = chunks
         logger.info("KeywordRetriever ready with %d chunks", len(chunks))
 
     def retrieve(self, query: str, top_k: int = 3) -> List[Chunk]:
-        """Return up to `top_k` chunks most relevant to `query`.
-
-        Scores every chunk and returns the highest-scoring ones.
-        Chunks with a score of zero are excluded even if fewer than top_k
-        results remain — avoids returning irrelevant content.
-        """
         query_tokens = tokenise(query)
         if not query_tokens:
             return []
-
         scored = [
             (chunk, _keyword_score(query_tokens, chunk))
             for chunk in self._chunks
         ]
         scored.sort(key=lambda x: x[1], reverse=True)
-
         return [chunk for chunk, score in scored[:top_k] if score > 0.0]
 
-    def retrieve_text(self, query: str, top_k: int = 3) -> List[str]:
-        """Convenience wrapper: returns chunk text strings directly."""
-        return [chunk.text for chunk in self.retrieve(query, top_k=top_k)]
+
+# ── FAISS retriever ───────────────────────────────────────────────────────────
+
+class FaissRetriever(BaseRetriever):
+    """Cosine-similarity retriever using an in-memory FAISS IndexFlatIP.
+
+    Embeddings are read from Chunk.embedding (pre-computed unit vectors).
+    Query embeddings are generated on the fly by the injected Embedder.
+
+    Why IndexFlatIP (inner product)?
+      Chunks and query vectors are L2-normalised so inner product == cosine
+      similarity.  IndexFlatIP is exact (no approximation), appropriate for
+      a corpus of < 10 000 chunks.  For larger corpora, swap to IndexIVFFlat
+      or IndexHNSWFlat for approximate-but-faster search.
+    """
+
+    def __init__(self, chunks: List[Chunk], embedder: object) -> None:
+        import faiss
+        import numpy as np
+
+        embeddings = np.array(
+            [c.embedding for c in chunks], dtype=np.float32
+        )
+        dim = embeddings.shape[1]
+        self._index = faiss.IndexFlatIP(dim)
+        self._index.add(embeddings)
+        self._chunks = chunks
+        self._embedder = embedder
+        logger.info(
+            "FaissRetriever ready | %d chunks | dim=%d", len(chunks), dim
+        )
+
+    def retrieve(self, query: str, top_k: int = 3) -> List[Chunk]:
+        query_vec = self._embedder.embed([query])   # shape (1, D)
+        k = min(top_k, len(self._chunks))
+        scores, indices = self._index.search(query_vec, k)
+
+        results = []
+        for idx, score in zip(indices[0], scores[0]):
+            if idx >= 0 and score > 0.0:
+                results.append(self._chunks[idx])
+        return results
 
 
 # ── Index loading ─────────────────────────────────────────────────────────────
 
 def _load_index() -> List[Chunk]:
-    """Read chunks from index.json.  Raises if the file is missing."""
     if not _INDEX_PATH.exists():
         raise FileNotFoundError(
             f"Retrieval index not found at {_INDEX_PATH}. "
-            "Run `python scripts/build_index.py` to build it."
+            "Run  python scripts/build_index.py  to build it."
         )
     data = json.loads(_INDEX_PATH.read_text(encoding="utf-8"))
     chunks = [Chunk.from_dict(c) for c in data["chunks"]]
+    has_embeddings = any(c.embedding is not None for c in chunks)
     logger.info(
-        "Loaded retrieval index v%s (%d chunks, built %s)",
+        "Loaded index v%s | %d chunks | embeddings=%s | built %s",
         data.get("version", "?"),
         len(chunks),
+        has_embeddings,
         data.get("built_at", "unknown"),
     )
     return chunks
 
 
 @lru_cache(maxsize=None)
-def get_retriever() -> KeywordRetriever:
-    """Return the singleton retriever, loading the index on first call.
+def get_retriever() -> BaseRetriever:
+    """Return the best available retriever for the current index.
 
-    lru_cache ensures the index is read from disk exactly once per process
-    lifetime, regardless of how many requests arrive.
+    Decision logic:
+      1. Load index.json.
+      2. If any chunk has a non-None embedding → try FaissRetriever.
+         - If faiss / fastembed are importable → return FaissRetriever.
+         - If import fails → warn and fall through.
+      3. Return KeywordRetriever.
+
+    lru_cache ensures the index is read and the FAISS index is built
+    exactly once per process — safe for concurrent requests.
     """
-    return KeywordRetriever(_load_index())
+    chunks = _load_index()
+    has_embeddings = any(c.embedding is not None for c in chunks)
+
+    if has_embeddings:
+        try:
+            import faiss  # noqa: F401  — check importable before constructing
+            from app.retrieval.embedder import Embedder
+            embedder = Embedder()
+            return FaissRetriever(chunks, embedder)
+        except ImportError as exc:
+            logger.warning(
+                "faiss/fastembed not available (%s) — using keyword retrieval",
+                exc,
+            )
+
+    logger.info("Using KeywordRetriever (no embeddings in index)")
+    return KeywordRetriever(chunks)

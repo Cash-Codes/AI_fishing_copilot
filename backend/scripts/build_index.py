@@ -2,15 +2,15 @@
 # scripts/build_index.py — Build or refresh the retrieval index from the corpus.
 #
 # Usage:
-#   python scripts/build_index.py            # build with defaults
-#   python scripts/build_index.py --dry-run  # print chunks without writing
+#   python scripts/build_index.py            # keyword-only index (no model needed)
+#   python scripts/build_index.py --embed    # include embeddings for FAISS retrieval
+#   python scripts/build_index.py --dry-run  # print chunk stats without writing
 #
-# Run this script whenever corpus files are added or edited.  It is safe to
-# run repeatedly — it overwrites the existing index.json each time.
+# The --embed flag downloads the embedding model on first run (~22 MB, cached).
+# Re-running with --embed is safe and overwrites the existing index.
 #
-# The script can be invoked from the repo root or from within backend/:
-#   cd backend && python scripts/build_index.py
-#   python backend/scripts/build_index.py   (from repo root)
+# Call this script whenever corpus files are edited:
+#   cd backend && python scripts/build_index.py --embed
 
 import argparse
 import json
@@ -20,37 +20,32 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 # ── Path setup ────────────────────────────────────────────────────────────────
-# Resolve the backend root regardless of where the script is called from.
 
 _SCRIPT_DIR  = Path(__file__).resolve().parent
 _BACKEND_DIR = _SCRIPT_DIR.parent
 _CORPUS_DIR  = _BACKEND_DIR / "app" / "corpus"
 _INDEX_PATH  = _BACKEND_DIR / "app" / "retrieval" / "index.json"
 
-# Add backend to sys.path so we can import app modules if needed later
 sys.path.insert(0, str(_BACKEND_DIR))
 
 # ── Chunking configuration ────────────────────────────────────────────────────
 
-MIN_WORDS   = 30    # chunks shorter than this are merged with the next
-MAX_WORDS   = 180   # chunks longer than this are split at sentence boundaries
-INDEX_VERSION = "1.0"
+MIN_WORDS     = 30
+MAX_WORDS     = 180
+INDEX_VERSION = "2.0"   # bumped when embedding field added
 
 
-# ── Chunker ───────────────────────────────────────────────────────────────────
+# ── Chunker (unchanged from v1) ───────────────────────────────────────────────
 
 def _split_sentences(text: str) -> list:
-    """Split text into sentences on '. ', '! ', '? ' boundaries."""
-    # Basic sentence splitter — sufficient for well-formatted markdown
     return [s.strip() for s in re.split(r"(?<=[.!?])\s+", text) if s.strip()]
 
 
 def _chunk_paragraphs(paragraphs: list, max_words: int, min_words: int) -> list:
-    """Merge short paragraphs upward and split long ones by sentence."""
     chunks = []
-    buffer = []
+    buffer: list = []
 
-    def flush():
+    def flush() -> None:
         text = " ".join(buffer).strip()
         if text:
             chunks.append(text)
@@ -59,11 +54,10 @@ def _chunk_paragraphs(paragraphs: list, max_words: int, min_words: int) -> list:
     for para in paragraphs:
         words = para.split()
         if len(words) > max_words:
-            # Long paragraph: flush current buffer, then split by sentence
             if buffer:
                 flush()
             sentences = _split_sentences(para)
-            sentence_buf = []
+            sentence_buf: list = []
             for sentence in sentences:
                 sentence_buf.append(sentence)
                 if len(" ".join(sentence_buf).split()) >= min_words:
@@ -78,42 +72,32 @@ def _chunk_paragraphs(paragraphs: list, max_words: int, min_words: int) -> list:
 
     if buffer:
         flush()
-
     return [c for c in chunks if c]
 
 
 def chunk_markdown(filepath: Path) -> list:
-    """Parse a markdown file into annotated chunks.
-
-    Each chunk is a dict with:
-        chunk_id, topic, heading, text, word_count, embedding (None)
-    """
+    """Parse one markdown file into annotated chunk dicts."""
     text = filepath.read_text(encoding="utf-8")
-    topic = filepath.stem   # e.g. "tide_basics"
+    topic = filepath.stem
     chunks = []
     current_heading = topic.replace("_", " ").title()
 
-    # Split into lines and accumulate paragraphs under headings
     lines = text.splitlines()
-    paragraphs = []
-    para_lines = []
+    paragraphs: list = []
+    para_lines: list = []
 
     for line in lines:
         stripped = line.strip()
-
         if stripped.startswith("#"):
-            # Flush any buffered paragraph lines
             if para_lines:
                 paragraphs.append((" ".join(para_lines), current_heading))
                 para_lines = []
-            # Update heading (strip # characters and whitespace)
             current_heading = stripped.lstrip("#").strip()
         elif stripped == "":
             if para_lines:
                 paragraphs.append((" ".join(para_lines), current_heading))
                 para_lines = []
         else:
-            # Strip markdown formatting (bold, italic, bullet points)
             clean = re.sub(r"\*{1,2}([^*]+)\*{1,2}", r"\1", stripped)
             clean = re.sub(r"^[-*+]\s+", "", clean)
             if clean:
@@ -122,9 +106,8 @@ def chunk_markdown(filepath: Path) -> list:
     if para_lines:
         paragraphs.append((" ".join(para_lines), current_heading))
 
-    # Group paragraphs by heading and chunk them
     heading_groups: dict = {}
-    heading_order = []
+    heading_order: list = []
     for para_text, heading in paragraphs:
         if heading not in heading_groups:
             heading_groups[heading] = []
@@ -133,35 +116,60 @@ def chunk_markdown(filepath: Path) -> list:
 
     chunk_counter = 1
     for heading in heading_order:
-        group_chunks = _chunk_paragraphs(
+        for chunk_text in _chunk_paragraphs(
             heading_groups[heading], max_words=MAX_WORDS, min_words=MIN_WORDS
-        )
-        for chunk_text in group_chunks:
+        ):
             wc = len(chunk_text.split())
             if wc < 10:
-                continue   # skip fragments
+                continue
             chunks.append({
                 "chunk_id":   f"{topic}_{chunk_counter:03d}",
                 "topic":      topic,
                 "heading":    heading,
                 "text":       chunk_text,
                 "word_count": wc,
-                "embedding":  None,   # populated by a future embed step
+                "embedding":  None,
             })
             chunk_counter += 1
 
     return chunks
 
 
+# ── Embedding step ────────────────────────────────────────────────────────────
+
+def _embed_chunks(chunks: list) -> list:
+    """Add embedding vectors to all chunks in-place and return them.
+
+    Uses the Embedder from app.retrieval.embedder (fastembed / all-MiniLM-L6-v2).
+    Vectors are L2-normalised so cosine similarity == inner product.
+    """
+    from app.retrieval.embedder import Embedder
+
+    embedder = Embedder()
+    texts = [c["text"] for c in chunks]
+
+    print(f"\nEmbedding {len(texts)} chunks with all-MiniLM-L6-v2…")
+    print("(model downloads ~22 MB on first run, then cached in ~/.cache/fastembed)\n")
+
+    import numpy as np
+    vectors: np.ndarray = embedder.embed(texts)   # shape (N, 384)
+
+    for chunk, vec in zip(chunks, vectors):
+        chunk["embedding"] = vec.tolist()
+
+    print(f"Embeddings generated | dim={vectors.shape[1]}")
+    return chunks
+
+
 # ── Main ──────────────────────────────────────────────────────────────────────
 
-def build(dry_run: bool = False) -> None:
+def build(embed: bool = False, dry_run: bool = False) -> None:
     corpus_files = sorted(_CORPUS_DIR.glob("*.md"))
     if not corpus_files:
         print(f"ERROR: No .md files found in {_CORPUS_DIR}", file=sys.stderr)
         sys.exit(1)
 
-    all_chunks = []
+    all_chunks: list = []
     for filepath in corpus_files:
         file_chunks = chunk_markdown(filepath)
         all_chunks.extend(file_chunks)
@@ -177,22 +185,42 @@ def build(dry_run: bool = False) -> None:
             print(f"  {chunk['text'][:120]}…")
         return
 
+    if embed:
+        all_chunks = _embed_chunks(all_chunks)
+
     index = {
-        "version":  INDEX_VERSION,
-        "built_at": datetime.now(tz=timezone.utc).isoformat(),
-        "chunks":   all_chunks,
+        "version":    INDEX_VERSION,
+        "built_at":   datetime.now(tz=timezone.utc).isoformat(),
+        "has_embeddings": embed,
+        "chunks":     all_chunks,
     }
 
     _INDEX_PATH.parent.mkdir(parents=True, exist_ok=True)
-    _INDEX_PATH.write_text(json.dumps(index, indent=2, ensure_ascii=False), encoding="utf-8")
-    print(f"\nIndex written to {_INDEX_PATH.relative_to(_BACKEND_DIR)}")
+    _INDEX_PATH.write_text(
+        json.dumps(index, indent=2, ensure_ascii=False), encoding="utf-8"
+    )
+
+    mode = "with embeddings" if embed else "keyword-only"
+    print(f"\nIndex written ({mode}) → {_INDEX_PATH.relative_to(_BACKEND_DIR)}")
+    if not embed:
+        print("Tip: run with --embed to enable semantic (FAISS) retrieval.")
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Build the fishing corpus retrieval index.")
+    parser = argparse.ArgumentParser(
+        description="Build the fishing corpus retrieval index.",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog=(
+            "Examples:\n"
+            "  python scripts/build_index.py             # fast keyword index\n"
+            "  python scripts/build_index.py --embed     # semantic FAISS index\n"
+            "  python scripts/build_index.py --dry-run   # stats only\n"
+        ),
+    )
+    parser.add_argument("--embed",   action="store_true", help="Generate and store embeddings.")
     parser.add_argument("--dry-run", action="store_true", help="Print stats without writing.")
     args = parser.parse_args()
 
-    print(f"Corpus directory: {_CORPUS_DIR}")
-    print(f"Output:           {_INDEX_PATH}\n")
-    build(dry_run=args.dry_run)
+    print(f"Corpus directory : {_CORPUS_DIR}")
+    print(f"Output           : {_INDEX_PATH}\n")
+    build(embed=args.embed, dry_run=args.dry_run)

@@ -13,5 +13,9 @@ pytest==8.3.5            # Test runner
 httpx==0.28.1            # ASGI test client — lets pytest call FastAPI without a real server
 pytest-asyncio==0.26.0   # Required if any tests are async (not needed yet, good to have)
 
+# ── Retrieval / Embeddings ────────────────────────────────────────────────────
+faiss-cpu==1.13.0        # Vector similarity search (CPU-only build, no GPU needed)
+fastembed==0.7.4         # Local ONNX-based embeddings — no PyTorch, no API key
+
 # ── Linting ───────────────────────────────────────────────────────────────────
 ruff==0.11.4             # Fast Python linter + formatter (replaces flake8/isort)
