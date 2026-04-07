@@ -1,0 +1,94 @@
+name: CI
+
+# Run on every push and on every pull request targeting main.
+# This means a branch push gets checked before anyone reviews the PR.
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: [main]
+
+# Cancel any in-progress run for the same branch/PR when a new commit arrives.
+# Prevents queuing up stale runs while you're still pushing fixes.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ── Frontend ────────────────────────────────────────────────────────────────
+  frontend:
+    name: Frontend — lint & test
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        # All steps in this job run from the frontend directory unless
+        # explicitly overridden with `working-directory`.
+        working-directory: frontend
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          # Cache npm dependencies keyed on the lockfile.
+          # On a cache hit the install step is a no-op — saves ~30 s per run.
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+        # `npm ci` installs exactly what's in package-lock.json and fails if
+        # the lockfile is out of sync with package.json. Safer than `npm install`
+        # in CI because it can't silently drift from what developers have locally.
+
+      - name: Lint (ESLint)
+        run: npm run lint
+
+      - name: Check formatting (Prettier)
+        run: npm run format:check
+
+      - name: Run tests
+        run: npm test -- --ci --bail --coverage
+        # --ci        disables interactive watch mode and fails on any new
+        #             snapshot rather than prompting to update it.
+        # --coverage  uploads coverage data (visible in the Actions summary).
+
+  # ── Backend ─────────────────────────────────────────────────────────────────
+  backend:
+    name: Backend — lint & test
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.9"
+          # Cache pip packages keyed on requirements.txt.
+          # The cache key changes whenever requirements.txt changes, so CI
+          # always installs fresh when dependencies are updated.
+          cache: "pip"
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Lint (Ruff)
+        # Ruff is a fast Python linter written in Rust — replaces flake8/isort.
+        # We install it separately so it doesn't bloat requirements.txt.
+        run: pip install --quiet ruff && ruff check .
+
+      - name: Run tests
+        run: pytest tests/ -v --tb=short
+        # -v       shows each test name so failures are easy to locate in the log.
+        # --tb=short  prints concise tracebacks (full tracebacks are noisy in CI).

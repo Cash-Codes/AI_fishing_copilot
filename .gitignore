@@ -16,6 +16,9 @@ develop-eggs/
 .installed.cfg
 lib/
 lib64/
+# Re-include the frontend's lib/ directory (excluded by the rule above)
+!frontend/lib/
+!frontend/lib/**
 *.so
 docs/
 

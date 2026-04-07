@@ -406,6 +406,48 @@ body {
   line-height: 1.7;
 }
 
+/* ─── Retrieved Notes ────────────────────────────────────────────────────────*/
+
+.notes-box {
+  margin-top: 0.75rem;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-dim);
+  border-radius: 8px;
+  padding: 1rem 1.1rem;
+}
+
+.notes-label {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.14em;
+  color: var(--text-dim);
+  margin-bottom: 0.6rem;
+}
+
+.notes-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.notes-item {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  /* Bullet replaced with a teal dash that matches the design language */
+  padding-left: 1rem;
+  position: relative;
+}
+
+.notes-item::before {
+  content: "–";
+  position: absolute;
+  left: 0;
+  color: var(--accent);
+}
+
 /* ─── Footer ──────────────────────────────────────────────────────────────────*/
 
 .page-footer {
