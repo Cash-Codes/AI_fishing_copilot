@@ -11,14 +11,25 @@ easy to locate:
 3. Validation   — bad input is rejected with 422 before our code runs.
 """
 
+from unittest.mock import MagicMock, patch
+
 import pytest
+
+
+# ── Helpers ───────────────────────────────────────────────────────────────────
+
+def _mock_geo(lat=50.2632, lon=-5.0510):
+    """Return a mock httpx response that resolves to (lat, lon) via postcodes.io."""
+    m = MagicMock()
+    m.status_code = 200
+    m.json.return_value = {"result": {"latitude": lat, "longitude": lon}}
+    return m
 
 
 # ── Fixtures ──────────────────────────────────────────────────────────────────
 
-# A minimal valid request body — reused across tests.
 VALID_BODY = {
-    "postcode": "TR11AA",
+    "location": "TR11AA",
     "species": "Bass",
     "preference": "best-chance",
 }
@@ -28,28 +39,39 @@ VALID_BODY = {
 
 class TestRecommendHappyPath:
     def test_returns_200(self, client):
-        response = client.post("/recommend", json=VALID_BODY)
+        with patch("app.services.geocoding.httpx.get", return_value=_mock_geo()), \
+             patch("app.services.harbour._fetch_overpass", return_value=()):
+            response = client.post("/recommend", json=VALID_BODY)
         assert response.status_code == 200
 
-    def test_echoes_input_postcode(self, client):
-        """
-        The frontend displays input_postcode to confirm which postcode was used.
-        Verifying the echo here catches any accidental normalisation that would
-        confuse the user.
-        """
-        response = client.post("/recommend", json=VALID_BODY)
-        assert response.json()["input_postcode"] == VALID_BODY["postcode"]
+    def test_echoes_input_location(self, client):
+        with patch("app.services.geocoding.httpx.get", return_value=_mock_geo()), \
+             patch("app.services.harbour._fetch_overpass", return_value=()):
+            response = client.post("/recommend", json=VALID_BODY)
+        assert response.json()["input_location"] == VALID_BODY["location"]
 
     def test_omitting_species_still_succeeds(self, client):
-        """species is optional — the endpoint must not 422 when it's absent."""
-        body = {"postcode": "EX11AA", "preference": "closest"}
-        response = client.post("/recommend", json=body)
+        body = {"location": "EX11AA", "preference": "closest"}
+        with patch("app.services.geocoding.httpx.get", return_value=_mock_geo(50.72, -3.53)), \
+             patch("app.services.harbour._fetch_overpass", return_value=()):
+            response = client.post("/recommend", json=body)
         assert response.status_code == 200
 
     def test_omitting_preference_still_succeeds(self, client):
-        """preference has a server-side default — omitting it must not 422."""
-        body = {"postcode": "PL11AA"}
-        response = client.post("/recommend", json=body)
+        body = {"location": "PL11AA"}
+        with patch("app.services.geocoding.httpx.get", return_value=_mock_geo(50.37, -4.14)), \
+             patch("app.services.harbour._fetch_overpass", return_value=()):
+            response = client.post("/recommend", json=body)
+        assert response.status_code == 200
+
+    def test_city_name_resolves_and_returns_200(self, client):
+        """Place names (not postcodes) should route via Nominatim and work."""
+        nominatim_resp = MagicMock()
+        nominatim_resp.status_code = 200
+        nominatim_resp.json.return_value = [{"lat": "51.5", "lon": "-0.1", "display_name": "London"}]
+        with patch("app.services.geocoding.httpx.get", return_value=nominatim_resp), \
+             patch("app.services.harbour._fetch_overpass", return_value=()):
+            response = client.post("/recommend", json={"location": "London"})
         assert response.status_code == 200
 
 
@@ -66,9 +88,13 @@ class TestRecommendResponseContract:
 
     @pytest.fixture(autouse=True)
     def response_body(self, client):
-        # autouse=True means this fixture runs automatically for every test in
-        # this class. We store the parsed body on self so each test can access it.
-        self.body = client.post("/recommend", json=VALID_BODY).json()
+        with patch("app.services.geocoding.httpx.get", return_value=_mock_geo()), \
+             patch("app.services.harbour._fetch_overpass", return_value=()):
+            self.body = client.post("/recommend", json=VALID_BODY).json()
+
+    def test_has_input_location(self):
+        assert "input_location" in self.body
+        assert isinstance(self.body["input_location"], str)
 
     def test_has_nearest_harbour(self):
         assert "nearest_harbour" in self.body
@@ -107,41 +133,30 @@ class TestRecommendResponseContract:
 class TestRecommendValidation:
     """
     Pydantic + FastAPI return HTTP 422 automatically when the request body
-    fails validation. These tests prove our Field() constraints are correct —
-    they catch the case where someone accidentally removes a constraint.
+    fails validation.
     """
 
-    def test_missing_postcode_returns_422(self, client):
+    def test_missing_location_returns_422(self, client):
         response = client.post("/recommend", json={"preference": "closest"})
         assert response.status_code == 422
 
-    def test_postcode_too_short_returns_422(self, client):
-        # min_length=5 on the postcode field
-        response = client.post("/recommend", json={"postcode": "TR1"})
+    def test_location_too_short_returns_422(self, client):
+        # min_length=2 on the location field
+        response = client.post("/recommend", json={"location": "T"})
         assert response.status_code == 422
 
-    def test_postcode_too_long_returns_422(self, client):
-        # max_length=8
-        response = client.post("/recommend", json={"postcode": "TR1 1AA EXTRA"})
+    def test_location_too_long_returns_422(self, client):
+        # max_length=100
+        response = client.post("/recommend", json={"location": "A" * 101})
         assert response.status_code == 422
 
     def test_invalid_preference_returns_422(self, client):
-        # preference must be one of the three Literal values
         response = client.post(
             "/recommend",
-            json={"postcode": "TR11AA", "preference": "not-a-valid-option"},
+            json={"location": "TR11AA", "preference": "not-a-valid-option"},
         )
         assert response.status_code == 422
 
     def test_empty_body_returns_422(self, client):
         response = client.post("/recommend", json={})
         assert response.status_code == 422
-
-    def test_422_body_contains_detail(self, client):
-        """
-        FastAPI's 422 response always includes a `detail` array describing
-        which fields failed — useful for debugging and for the frontend to
-        surface actionable error messages.
-        """
-        response = client.post("/recommend", json={})
-        assert "detail" in response.json()

@@ -32,7 +32,7 @@ const mockRecommend = recommend as jest.MockedFunction<typeof recommend>;
 // ─── Fixtures ─────────────────────────────────────────────────────────────────
 
 const MOCK_RESULT: RecommendResponse = {
-  input_postcode: "TR1 1AA",
+  input_location: "TR1 1AA",
   nearest_harbour: "Falmouth Harbour",
   recommendation_window: "Saturday 06:00 – 10:00",
   confidence_score: 0.82,
@@ -49,10 +49,10 @@ beforeEach(() => {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-/** Fills the postcode field and submits the form. */
-async function submitForm(postcode = "TR1 1AA") {
+/** Fills the location field and submits the form. */
+async function submitForm(location = "TR1 1AA") {
   const user = userEvent.setup();
-  await user.type(screen.getByLabelText(/postcode/i), postcode);
+  await user.type(screen.getByLabelText(/location/i), location);
   await user.click(screen.getByRole("button", { name: /find fishing spots/i }));
 }
 
@@ -60,9 +60,9 @@ async function submitForm(postcode = "TR1 1AA") {
 
 describe("FishingForm", () => {
   describe("rendering", () => {
-    it("renders the postcode input", () => {
+    it("renders the location input", () => {
       render(<FishingForm />);
-      expect(screen.getByLabelText(/postcode/i)).toBeInTheDocument();
+      expect(screen.getByLabelText(/location/i)).toBeInTheDocument();
     });
 
     it("renders the species input", () => {
@@ -80,11 +80,11 @@ describe("FishingForm", () => {
       expect(screen.getByRole("option", { name: /calmer/i })).toBeInTheDocument();
     });
 
-    it("uppercases the postcode as the user types", async () => {
+    it("preserves the value as the user types", async () => {
       render(<FishingForm />);
       const user = userEvent.setup();
-      await user.type(screen.getByLabelText(/postcode/i), "tr1 1aa");
-      expect(screen.getByLabelText(/postcode/i)).toHaveValue("TR1 1AA");
+      await user.type(screen.getByLabelText(/location/i), "Falmouth");
+      expect(screen.getByLabelText(/location/i)).toHaveValue("Falmouth");
     });
   });
 
@@ -94,14 +94,14 @@ describe("FishingForm", () => {
       render(<FishingForm />);
       const user = userEvent.setup();
 
-      await user.type(screen.getByLabelText(/postcode/i), "TR1 1AA");
+      await user.type(screen.getByLabelText(/location/i), "TR1 1AA");
       await user.type(screen.getByLabelText(/target species/i), "Bass");
       await user.click(screen.getByRole("button", { name: /find fishing spots/i }));
 
       await waitFor(() =>
         expect(mockRecommend).toHaveBeenCalledWith(
           expect.objectContaining({
-            postcode: "TR1 1AA",
+            location: "TR1 1AA",
             species: "Bass",
           }),
           expect.any(AbortSignal)
@@ -161,7 +161,7 @@ describe("FishingForm", () => {
 
       await submitForm();
 
-      await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent(/invalid postcode/i));
+      await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent(/invalid location/i));
     });
 
     it("shows a server error message on a 500", async () => {

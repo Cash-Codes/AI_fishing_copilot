@@ -18,9 +18,10 @@
 import logging
 from dataclasses import dataclass
 from datetime import date
-from typing import Dict, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 from app.data.loader import Harbour, get_species_by_name
+from app.services.conditions import FishingConditions
 
 logger = logging.getLogger(__name__)
 
@@ -56,6 +57,21 @@ _MONTH_NAMES: Dict[str, int] = {
     "may": 5, "june": 6, "july": 7, "august": 8,
     "september": 9, "october": 10, "november": 11, "december": 12,
 }
+
+
+# ─── Harbour-selection constants ─────────────────────────────────────────────
+
+# Weights used by select_harbour() to rank candidate harbours.
+# These are distinct from _PREFERENCE_WEIGHTS (which control the confidence
+# score shown to the user).  Selection weights determine WHICH harbour is
+# picked; confidence weights determine HOW SURE we are about that pick.
+_SELECT_WEIGHTS: Dict[str, Tuple[float, float, float]] = {
+    # (proximity, calm, fishing_quality)
+    "closest":           (0.85, 0.15, 0.00),
+    "calmer-conditions": (0.30, 0.70, 0.00),
+    "best-chance":       (0.25, 0.00, 0.75),
+}
+_SELECT_DEFAULT: Tuple[float, float, float] = (0.40, 0.20, 0.40)
 
 
 # ─── Public result type ───────────────────────────────────────────────────────
@@ -170,6 +186,107 @@ def _species_score(harbour: Harbour, species_name: Optional[str], month: int) ->
     if in_season:
         return 0.3   # good season but this harbour isn't known for this fish
     return 0.1       # harbour not a match and out of season
+
+
+# ─── Selection signal helpers ────────────────────────────────────────────────
+
+def _proximity_score(distance_km: float) -> float:
+    """Smooth hyperbolic decay: 0 km → 1.0, 20 km → 0.5, 100 km → 0.17.
+
+    Softer than the linear _distance_score so a harbour that is 20 km further
+    but significantly calmer or more species-appropriate can still win.
+    """
+    if distance_km < 0:
+        return 0.0
+    return 1.0 / (1.0 + distance_km / 20.0)
+
+
+def _calm_score(wave_m: float, wind_kn: float) -> float:
+    """0–1, higher = calmer sea.  Wave height and wind speed equally weighted.
+
+    Thresholds match the Douglas scale / Beaufort scale for practical fishing:
+      wave 4 m+ or wind 32 kn+ → score approaches 0 (unsafe / too rough)
+    """
+    wave = max(0.0, 1.0 - wave_m / 4.0)
+    wind = max(0.0, 1.0 - wind_kn / 32.0)
+    return (wave + wind) / 2.0
+
+
+def _fishing_quality_score(tide_phase: str, spring_or_neap: str) -> float:
+    """0–1 tidal quality for fishing.  Flood/spring tide = best opportunity.
+
+    Flood tide concentrates baitfish over structure; spring tides produce
+    stronger currents that trigger feeding.
+    """
+    phase_score = {
+        "Flood":       1.00,
+        "High Water":  0.85,
+        "Ebb":         0.55,
+        "Low Water":   0.30,
+    }.get(tide_phase, 0.50)
+    neap_factor = 1.0 if spring_or_neap == "Spring" else 0.75
+    return phase_score * neap_factor
+
+
+def select_harbour(
+    candidates: List[Tuple[Harbour, float]],
+    conditions_list: List[FishingConditions],
+    species: Optional[str],
+    preference: Optional[str],
+    *,
+    today: Optional[date] = None,
+) -> int:
+    """Return the index of the best candidate harbour for the given preference.
+
+    Each preference weights three independent signals differently:
+
+      closest           → maximise proximity; calm sea as tiebreaker.
+      calmer-conditions → maximise calm (wave + wind); proximity secondary.
+      best-chance       → maximise species/season match + tidal quality;
+                          proximity as a minor factor.
+
+    Args:
+        candidates:      (harbour, distance_km) pairs, nearest-first.
+        conditions_list: FishingConditions for each candidate, same order.
+        species:         Target fish species, or None.
+        preference:      User preference key, or None (defaults to best-chance).
+        today:           Override date for season checks (tests).
+
+    Returns:
+        Index into `candidates` / `conditions_list` for the selected harbour.
+    """
+    pref = preference or "best-chance"
+    month = (today or date.today()).month
+    w_prox, w_calm, w_fish = _SELECT_WEIGHTS.get(pref, _SELECT_DEFAULT)
+
+    best_idx = 0
+    best_score = -1.0
+
+    for i, ((harbour, dist_km), cond) in enumerate(zip(candidates, conditions_list)):
+        prox = _proximity_score(dist_km)
+        calm = _calm_score(cond.wave_height_m, cond.wind_speed_knots)
+        fish = _fishing_quality_score(cond.tide_phase, cond.spring_or_neap)
+        sp   = _species_score(harbour, species, month)
+
+        # For best-chance, blend fishing quality with species match
+        fish_sp = (fish + sp) / 2.0 if w_fish > 0 else 0.0
+
+        score = w_prox * prox + w_calm * calm + w_fish * fish_sp
+
+        logger.debug(
+            "Candidate %s | prox=%.2f calm=%.2f fish_sp=%.2f → score=%.3f",
+            harbour.name, prox, calm, fish_sp, score,
+        )
+
+        if score > best_score:
+            best_score = score
+            best_idx = i
+
+    logger.info(
+        "Harbour selected: %s (idx=%d, pref=%s, score=%.3f)",
+        candidates[best_idx][0].name, best_idx, pref, best_score,
+    )
+    return best_idx
 
 
 # ─── Public API ───────────────────────────────────────────────────────────────

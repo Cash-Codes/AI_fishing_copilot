@@ -15,7 +15,8 @@
 
 /** Body sent to POST /recommend. */
 export interface RecommendRequest {
-  postcode: string;
+  /** UK postcode ("TR1 1AA") or any place name ("Falmouth", "New York"). */
+  location: string;
   /** Optional — omit for a general (non-species-specific) recommendation. */
   species?: string;
   preference: "closest" | "best-chance" | "calmer-conditions";
@@ -27,7 +28,7 @@ export interface RecommendRequest {
  * a manual mapping layer.
  */
 export interface RecommendResponse {
-  input_postcode: string;
+  input_location: string;
   nearest_harbour: string;
   recommendation_window: string;
   /** 0.0 (uncertain) → 1.0 (highly confident). */
@@ -35,8 +36,21 @@ export interface RecommendResponse {
   explanation: string;
   /** True when live data was unavailable and static rules were used instead. */
   used_fallback: boolean;
+  /** True when the location is outside the service's coverage area. */
+  out_of_range?: boolean;
   /** Relevant notes retrieved from the FAISS knowledge base. */
   retrieved_notes: string[];
+  /** Retrieval strategy used: 'hybrid-rrf', 'faiss', or 'bm25'. */
+  retrieval_method?: string;
+  // ── Conditions (all optional — absent when backend uses mock data) ──────────
+  wind_speed_knots?: number;
+  wind_direction?: string;
+  wind_description?: string;
+  wave_height_m?: number;
+  sea_state?: string;
+  tide_phase?: string;
+  spring_or_neap?: string;
+  conditions_summary?: string;
 }
 
 // ─── Error handling ───────────────────────────────────────────────────────────

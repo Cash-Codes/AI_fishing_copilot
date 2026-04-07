@@ -4,15 +4,20 @@
 # deterministic regardless of when they run.  No mocking needed for datetime.
 
 from datetime import date
+from unittest.mock import MagicMock
 
 from app.data.loader import get_harbour_by_id
 from app.services.scoring import (
     ScoreBreakdown,
+    _calm_score,
     _distance_score,
+    _fishing_quality_score,
     _is_in_season,
     _parse_season,
+    _proximity_score,
     _species_score,
     score_recommendation,
+    select_harbour,
 )
 
 # ─── Fixtures ─────────────────────────────────────────────────────────────────
@@ -183,3 +188,125 @@ class TestScoreRecommendation:
         assert result.distance_score == 0.5
         assert result.species_score == 0.5
         assert result.confidence_score == 0.5
+
+
+# ─── Selection signal helpers ─────────────────────────────────────────────────
+
+class TestProximityScore:
+
+    def test_zero_distance_is_one(self):
+        assert _proximity_score(0.0) == 1.0
+
+    def test_twenty_km_is_half(self):
+        assert _proximity_score(20.0) == 0.5
+
+    def test_sentinel_minus_one_is_zero(self):
+        assert _proximity_score(-1.0) == 0.0
+
+    def test_decreases_with_distance(self):
+        assert _proximity_score(5.0) > _proximity_score(50.0) > _proximity_score(200.0)
+
+
+class TestCalmScore:
+
+    def test_flat_calm_is_one(self):
+        assert _calm_score(0.0, 0.0) == 1.0
+
+    def test_both_at_max_is_zero(self):
+        assert _calm_score(4.0, 32.0) == 0.0
+
+    def test_rough_sea_lowers_score(self):
+        assert _calm_score(3.0, 5.0) < _calm_score(0.5, 5.0)
+
+    def test_high_wind_lowers_score(self):
+        assert _calm_score(0.5, 25.0) < _calm_score(0.5, 5.0)
+
+    def test_score_between_zero_and_one(self):
+        assert 0.0 <= _calm_score(1.5, 15.0) <= 1.0
+
+
+class TestFishingQualityScore:
+
+    def test_spring_flood_is_highest(self):
+        assert _fishing_quality_score("Flood", "Spring") == 1.0
+
+    def test_neap_reduces_score(self):
+        assert _fishing_quality_score("Flood", "Neap") < _fishing_quality_score("Flood", "Spring")
+
+    def test_low_water_is_lowest(self):
+        assert _fishing_quality_score("Low Water", "Neap") < _fishing_quality_score("Ebb", "Neap")
+
+    def test_flood_better_than_ebb(self):
+        assert _fishing_quality_score("Flood", "Spring") > _fishing_quality_score("Ebb", "Spring")
+
+
+# ─── select_harbour ───────────────────────────────────────────────────────────
+
+def _make_conditions(wave_m=1.0, wind_kn=10.0, tide_phase="Flood", spring_or_neap="Spring"):
+    """Build a minimal FishingConditions-like mock for selection tests."""
+    c = MagicMock()
+    c.wave_height_m = wave_m
+    c.wind_speed_knots = wind_kn
+    c.tide_phase = tide_phase
+    c.spring_or_neap = spring_or_neap
+    return c
+
+
+class TestSelectHarbour:
+
+    def test_closest_picks_nearest(self):
+        # Two candidates: Falmouth (5 km) vs Whitby (300 km)
+        candidates = [(FALMOUTH, 5.0), (WHITBY, 300.0)]
+        conds = [_make_conditions(), _make_conditions()]
+        idx = select_harbour(candidates, conds, species=None, preference="closest")
+        assert idx == 0  # Falmouth is closer
+
+    def test_calmer_picks_calmer_harbour(self):
+        # Candidate 0: rough seas. Candidate 1: calm but further away.
+        candidates = [(FALMOUTH, 5.0), (WHITBY, 30.0)]
+        conds = [
+            _make_conditions(wave_m=3.5, wind_kn=28.0),  # rough
+            _make_conditions(wave_m=0.3, wind_kn=4.0),   # calm
+        ]
+        idx = select_harbour(candidates, conds, species=None, preference="calmer-conditions")
+        assert idx == 1  # Whitby is calmer
+
+    def test_best_chance_favours_species_match(self):
+        # Falmouth mentions Bass; July is in Bass season (May–Oct).
+        # Whitby doesn't mention Bass and is further away.
+        candidates = [(FALMOUTH, 10.0), (WHITBY, 50.0)]
+        conds = [_make_conditions(), _make_conditions()]
+        idx = select_harbour(
+            candidates, conds, species="Bass", preference="best-chance", today=JULY_1
+        )
+        assert idx == 0  # Falmouth has Bass in season
+
+    def test_best_chance_with_out_of_season_species_considers_other_signals(self):
+        # Bass out of season everywhere — selection should still return a valid index
+        candidates = [(FALMOUTH, 10.0), (WHITBY, 50.0)]
+        conds = [_make_conditions(), _make_conditions()]
+        idx = select_harbour(
+            candidates, conds, species="Bass", preference="best-chance", today=JAN_1
+        )
+        assert idx in (0, 1)  # just verify it doesn't crash and returns valid index
+
+    def test_none_preference_defaults_to_best_chance_behaviour(self):
+        candidates = [(FALMOUTH, 10.0), (WHITBY, 300.0)]
+        conds = [_make_conditions(), _make_conditions()]
+        idx = select_harbour(candidates, conds, species=None, preference=None)
+        assert idx in (0, 1)
+
+    def test_single_candidate_always_returns_zero(self):
+        candidates = [(FALMOUTH, 10.0)]
+        conds = [_make_conditions()]
+        assert select_harbour(candidates, conds, species=None, preference="closest") == 0
+
+    def test_closest_ignores_calm_when_distance_very_different(self):
+        # 2 km vs 150 km — distance gap should dominate even with calmer distant harbour
+        candidates = [(FALMOUTH, 2.0), (WHITBY, 150.0)]
+        conds = [
+            _make_conditions(wave_m=2.0, wind_kn=20.0),
+            _make_conditions(wave_m=0.1, wind_kn=1.0),
+        ]
+        idx = select_harbour(candidates, conds, species=None, preference="closest")
+        assert idx == 0

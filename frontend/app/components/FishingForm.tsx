@@ -22,7 +22,7 @@ import ResultsPanel from "./ResultsPanel";
 
 export default function FishingForm() {
   // ── Form field state ───────────────────────────────────────────────────────
-  const [postcode, setPostcode] = useState("");
+  const [location, setLocation] = useState("");
   const [species, setSpecies] = useState("");
   const [preference, setPreference] = useState<RecommendRequest["preference"]>("best-chance");
 
@@ -37,12 +37,29 @@ export default function FishingForm() {
    */
   const abortRef = useRef<AbortController | null>(null);
 
+  /**
+   * Ref for the results column — used to scroll into view on mobile when
+   * results arrive (on desktop the split layout means no scroll is needed).
+   */
+  const resultsRef = useRef<HTMLDivElement>(null);
+
   // Cancel any in-flight request when the component unmounts (e.g. page change).
   useEffect(() => {
     return () => {
       abortRef.current?.abort();
     };
   }, []);
+
+  // Scroll results into view on mobile once they arrive.
+  useEffect(() => {
+    if (result && resultsRef.current && window.innerWidth < 768) {
+      // Small delay so the animation has started before scroll begins.
+      const id = setTimeout(() => {
+        resultsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 80);
+      return () => clearTimeout(id);
+    }
+  }, [result]);
 
   // Separated from the DOM onSubmit so this function has no dependency on
   // SyntheticEvent — it's pure business logic and trivial to call in tests.
@@ -59,7 +76,7 @@ export default function FishingForm() {
     try {
       const data = await recommend(
         {
-          postcode,
+          location,
           // Only include species in the payload when the user typed something —
           // the backend treats undefined as "no species preference".
           species: species.trim() || undefined,
@@ -74,7 +91,7 @@ export default function FishingForm() {
 
       if (err instanceof ApiError && err.status === 422) {
         // 422 means the backend rejected our input — show a friendlier message.
-        setError("Invalid postcode or input. Please check and try again.");
+        setError("Invalid location or input. Please check and try again.");
       } else if (err instanceof ApiError) {
         setError(`Server error (${err.status}). Please try again in a moment.`);
       } else {
@@ -86,88 +103,137 @@ export default function FishingForm() {
     }
   }
 
+  const hasOutput = loading || !!result;
+
   return (
-    <div className="w-full">
-      {/* preventDefault handled inline; handleSubmit stays event-free */}
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          void handleSubmit();
-        }}
-        className="space-y-5"
-      >
-        {/* ── Postcode ──────────────────────────────────────────────────── */}
-        <div className="field-group">
-          <label htmlFor="postcode" className="field-label">
-            <span className="label-tag">01</span> Postcode
-          </label>
-          <input
-            id="postcode"
-            type="text"
-            required
-            placeholder="e.g. TR1 1AA"
-            value={postcode}
-            // toUpperCase keeps the value consistent with UK postcode format.
-            onChange={(e) => setPostcode(e.target.value.toUpperCase())}
-            className="field-input"
-          />
-        </div>
+    <div className={`form-results-wrapper${hasOutput ? " has-output" : ""}`}>
+      {/* ── LEFT COLUMN: Form ─────────────────────────────────────────────── */}
+      <div className="form-section">
+        {/* preventDefault handled inline; handleSubmit stays event-free */}
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            void handleSubmit();
+          }}
+          className="form-stack"
+        >
+          {/* ── Location ────────────────────────────────────────────────── */}
+          <div className="field-group">
+            <label htmlFor="location" className="field-label">
+              Location
+            </label>
+            <input
+              id="location"
+              type="text"
+              required
+              placeholder="Postcode or city — e.g. TR1 1AA, Falmouth, New York"
+              value={location}
+              onChange={(e) => setLocation(e.target.value)}
+              className="field-input"
+            />
+          </div>
 
-        {/* ── Species (optional) ────────────────────────────────────────── */}
-        <div className="field-group">
-          <label htmlFor="species" className="field-label">
-            <span className="label-tag">02</span> Target species
-            <span className="optional-badge">optional</span>
-          </label>
-          <input
-            id="species"
-            type="text"
-            placeholder="e.g. Bass, Mackerel, Pollock"
-            value={species}
-            onChange={(e) => setSpecies(e.target.value)}
-            className="field-input"
-          />
-        </div>
+          {/* ── Species (optional) ──────────────────────────────────────── */}
+          <div className="field-group">
+            <label htmlFor="species" className="field-label">
+              Target species
+              <span className="optional-badge">optional</span>
+            </label>
+            <input
+              id="species"
+              type="text"
+              placeholder="e.g. Bass, Mackerel, Pollock"
+              value={species}
+              onChange={(e) => setSpecies(e.target.value)}
+              className="field-input"
+            />
+          </div>
 
-        {/* ── Preference ────────────────────────────────────────────────── */}
-        <div className="field-group">
-          <label htmlFor="preference" className="field-label">
-            <span className="label-tag">03</span> I&apos;d prefer…
-          </label>
-          <select
-            id="preference"
-            value={preference}
-            onChange={(e) => setPreference(e.target.value as RecommendRequest["preference"])}
-            className="field-input"
+          {/* ── Preference ──────────────────────────────────────────────── */}
+          <div className="field-group">
+            <label htmlFor="preference" className="field-label">
+              I&apos;d prefer…
+            </label>
+            <select
+              id="preference"
+              value={preference}
+              onChange={(e) => setPreference(e.target.value as RecommendRequest["preference"])}
+              className="field-input"
+            >
+              <option value="closest">Closest harbour to me</option>
+              <option value="best-chance">Best chance of a catch</option>
+              <option value="calmer-conditions">Calmer sea conditions</option>
+            </select>
+          </div>
+
+          {/* ── Submit ──────────────────────────────────────────────────── */}
+          <button
+            type="submit"
+            disabled={loading}
+            className={`submit-btn${loading ? " submit-btn--loading" : ""}`}
           >
-            <option value="closest">Closest harbour to me</option>
-            <option value="best-chance">Best chance of a catch</option>
-            <option value="calmer-conditions">Calmer sea conditions</option>
-          </select>
-        </div>
+            {loading ? (
+              <span className="flex items-center gap-2">
+                <Spinner />
+                Scanning conditions…
+              </span>
+            ) : (
+              "Find Fishing Spots →"
+            )}
+          </button>
+        </form>
 
-        {/* ── Submit ────────────────────────────────────────────────────── */}
-        <button type="submit" disabled={loading} className="submit-btn">
-          {loading ? (
-            <span className="flex items-center gap-2">
-              <Spinner />
-              Scanning conditions…
-            </span>
-          ) : (
-            "Find Fishing Spots →"
-          )}
-        </button>
-      </form>
+        {/* ── Error message ─────────────────────────────────────────────── */}
+        {error && (
+          <div role="alert" className="mt-6 error-box">
+            <span className="error-icon">⚠</span> {error}
+          </div>
+        )}
+      </div>
 
-      {/* ── Error message ─────────────────────────────────────────────────── */}
-      {error && (
-        <div role="alert" className="mt-6 error-box">
-          <span className="error-icon">⚠</span> {error}
-        </div>
-      )}
+      {/* ── RIGHT COLUMN: Results / Loading / Empty state ─────────────────── */}
+      <div className="results-section" ref={resultsRef}>
+        {/* Loading skeleton */}
+        {loading && <LoadingSkeleton />}
 
-      {/* ── Results ───────────────────────────────────────────────────────── */}
-      {result && <ResultsPanel result={result} />}
+        {/* Results */}
+        {!loading && result && <ResultsPanel result={result} />}
+
+        {/* Desktop empty state — hidden on mobile, shown when no output yet */}
+        {!hasOutput && <EmptyState />}
+      </div>
+    </div>
+  );
+}
+
+/** Placeholder shown in the right column on desktop before any search. */
+function EmptyState() {
+  return (
+    <div className="empty-state" aria-hidden="true">
+      <div className="empty-state-sonar">
+        <span className="sonar-ring sonar-ring--1" />
+        <span className="sonar-ring sonar-ring--2" />
+        <span className="sonar-ring sonar-ring--3" />
+        <span className="sonar-dot" />
+      </div>
+      <p className="empty-state-label">Cast your line</p>
+      <p className="empty-state-hint">Enter a location to get your fishing report</p>
+    </div>
+  );
+}
+
+/** Skeleton placeholder shown in the results area while a request is in flight. */
+function LoadingSkeleton() {
+  return (
+    <div className="loading-state" aria-busy="true" aria-label="Loading recommendation">
+      <span className="loading-label">Scanning conditions</span>
+      <div className="skeleton-grid">
+        <div className="skeleton-card skeleton-bar" />
+        <div className="skeleton-card skeleton-bar" />
+      </div>
+      <div className="skeleton-wide skeleton-bar" />
+      <div className="skeleton-narrow skeleton-bar" />
+      <div className="skeleton-block skeleton-bar" />
     </div>
   );
 }
