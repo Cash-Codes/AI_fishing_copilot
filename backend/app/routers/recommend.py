@@ -1,13 +1,18 @@
 # routers/recommend.py — The main AI recommendation endpoint.
 #
 # POST /recommend receives the user's postcode + preferences and returns
-# a fishing recommendation. Right now it returns hardcoded mock data.
+# a fishing recommendation with the *nearest real harbour* to their location.
 #
-# TODO: Replace the mock response with real logic:
-#   1. Look up the nearest harbour from the postcode.
-#   2. Query the FAISS vector store for relevant fishing notes.
-#   3. Call the Vertex AI / Gemini model with the notes as context.
-#   4. Parse and return the model's response.
+# Resolution flow:
+#   1. Resolve postcode → (lat, lon) via local seed map or postcodes.io API.
+#   2. Find nearest harbour using Haversine distance.
+#   3. If postcode is unknown, fall back to the default harbour and set
+#      used_fallback=True so the client can show a notice.
+#
+# TODO: Replace the mock explanation with real AI logic:
+#   1. Query the FAISS vector store for relevant fishing notes.
+#   2. Call the Vertex AI / Gemini model with the notes as context.
+#   3. Parse and return the model's structured response.
 
 import logging
 
@@ -15,8 +20,9 @@ from fastapi import APIRouter
 
 from app.models.request import RecommendRequest
 from app.models.response import RecommendResponse
+from app.services.harbour import default_harbour, nearest_harbour
+from app.services.postcode import resolve_postcode
 
-# Standard Python logger — messages appear in the terminal when you run the server
 logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["Recommend"])
@@ -41,7 +47,6 @@ def get_recommendation(body: RecommendRequest) -> RecommendResponse:
       - Returns HTTP 422 if validation fails (e.g. postcode too short).
       - Serialises our return value to JSON using RecommendResponse.
     """
-    # Log the incoming request so we can see activity in the terminal
     logger.info(
         "Recommendation requested | postcode=%s | species=%s | preference=%s",
         body.postcode,
@@ -49,9 +54,42 @@ def get_recommendation(body: RecommendRequest) -> RecommendResponse:
         body.preference,
     )
 
-    # ── Mock response ──────────────────────────────────────────────────────────
-    # This is placeholder data. Replace this entire block once the real
-    # harbour lookup, vector search, and AI call are implemented.
+    # ── Step 1: resolve postcode ───────────────────────────────────────────────
+    coords = resolve_postcode(body.postcode)
+    used_fallback = coords is None
+
+    if coords is not None:
+        lat, lon = coords
+        harbour, distance_km = nearest_harbour(lat, lon)
+        logger.info(
+            "Nearest harbour: %s (%.1f km from %s)",
+            harbour.name,
+            distance_km,
+            body.postcode,
+        )
+    else:
+        logger.warning(
+            "Could not resolve postcode %s — using default harbour",
+            body.postcode,
+        )
+        harbour, distance_km = default_harbour()
+
+    # ── Step 2: build response ─────────────────────────────────────────────────
+    # The explanation and window are still placeholder text.
+    # They will be replaced by a real AI call in a later iteration.
+
+    distance_note = (
+        f"{distance_km:.0f} km from {body.postcode}"
+        if distance_km >= 0
+        else "location could not be determined from postcode"
+    )
+
+    explanation = (
+        f"{harbour.name} is your nearest harbour ({distance_note}). "
+        f"{harbour.short_description} "
+        f"Targeting {body.species or 'general sea fishing'} with a preference "
+        f'for "{body.preference}".'
+    )
 
     mock_notes = [
         "Spring tide Saturday — strong tidal flow, good for Bass.",
@@ -59,21 +97,12 @@ def get_recommendation(body: RecommendRequest) -> RecommendResponse:
         "Water temperature 14 °C — Bass actively feeding.",
     ]
 
-    mock_explanation = (
-        f"Based on your postcode ({body.postcode}) and a preference for "
-        f'"{body.preference}", Falmouth Harbour is the closest match. '
-        f"Tidal flow peaks Saturday morning with light south-westerly winds "
-        f"and a 0.8 m swell — ideal conditions for "
-        f"{body.species or 'general sea fishing'}."
-    )
-
     return RecommendResponse(
         input_postcode=body.postcode,
-        nearest_harbour="Falmouth Harbour",
+        nearest_harbour=harbour.name,
         recommendation_window="Saturday 06:00 – 10:00",
         confidence_score=0.82,
-        explanation=mock_explanation,
-        used_fallback=False,
+        explanation=explanation,
+        used_fallback=used_fallback,
         retrieved_notes=mock_notes,
     )
-    # ── End mock response ──────────────────────────────────────────────────────

@@ -78,5 +78,69 @@
     "latitude": 54.4877,
     "longitude": -0.6140,
     "short_description": "North Yorkshire working harbour with outstanding Cod fishing from October to February. Pier fishing produces Codling, Coalfish, and Whiting on night tides."
+  },
+  {
+    "id": "scarborough",
+    "name": "Scarborough Harbour",
+    "postcode": "YO11 1PD",
+    "latitude": 54.2797,
+    "longitude": -0.3893,
+    "short_description": "Traditional North Yorkshire fishing port with two bays. South Bay pier produces Cod and Whiting in winter; Mackerel and Garfish from the harbour walls in summer."
+  },
+  {
+    "id": "eyemouth",
+    "name": "Eyemouth Harbour",
+    "postcode": "TD14 5HY",
+    "latitude": 55.8744,
+    "longitude": -2.0897,
+    "short_description": "Compact Scottish Borders harbour with productive inshore marks. Cod, Haddock, and Pollack are taken year-round; excellent Mackerel and Coalfish in summer."
+  },
+  {
+    "id": "anstruther",
+    "name": "Anstruther Harbour",
+    "postcode": "KY10 3AB",
+    "latitude": 56.2232,
+    "longitude": -2.6985,
+    "short_description": "Historic East Neuk of Fife harbour. Sheltered anchorage with good Cod, Haddock, and Coalfish marks offshore in the Firth of Forth."
+  },
+  {
+    "id": "macduff",
+    "name": "Macduff Harbour",
+    "postcode": "AB44 1UB",
+    "latitude": 57.6637,
+    "longitude": -2.4987,
+    "short_description": "Active Aberdeenshire harbour on the Moray Firth. Excellent Cod, Haddock, and Whiting fishing year-round; Mackerel shoals arrive from June to September."
+  },
+  {
+    "id": "peterhead",
+    "name": "Peterhead Harbour",
+    "postcode": "AB42 1DQ",
+    "latitude": 57.5049,
+    "longitude": -1.7834,
+    "short_description": "Scotland's largest shellfish port on the north-east coast. Rich offshore grounds for Haddock and Cod; Mackerel feathering from the breakwater in summer."
+  },
+  {
+    "id": "oban",
+    "name": "Oban Harbour",
+    "postcode": "PA34 4DB",
+    "latitude": 56.4149,
+    "longitude": -5.4714,
+    "short_description": "Gateway to the Western Isles with sheltered sea lochs ideal for Coalfish, Pollack, and Mackerel. Wrasse and Cuckoo Wrasse are caught on light tackle in the kelp."
+  },
+  {
+    "id": "ullapool",
+    "name": "Ullapool Harbour",
+    "postcode": "IV26 2XB",
+    "latitude": 57.8970,
+    "longitude": -5.1590,
+    "short_description": "Remote north-west Highland harbour on Loch Broom. Superb Pollack and Coalfish on the Atlantic-facing marks; Mackerel in huge numbers through summer."
+  },
+  {
+    "id": "wick",
+    "name": "Wick Harbour",
+    "postcode": "KW1 5EH",
+    "latitude": 58.4369,
+    "longitude": -3.0836,
+    "short_description": "Caithness harbour at the far north of mainland Scotland. Cod and Haddock year-round; strong tidal flows off Duncansby Head create exceptional Pollock marks."
   }
 ]
