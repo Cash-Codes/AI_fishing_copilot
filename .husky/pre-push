@@ -7,7 +7,11 @@
 set -e  # stop immediately if any command exits non-zero
 
 echo "▶ Running frontend tests…"
-cd frontend && node_modules/.bin/jest --passWithNoTests
+# --ci      disables watch mode and fails the process on any test suite error,
+#           including module resolution failures. Without this flag Jest can
+#           exit 0 even when suites fail to load.
+# --bail    stops after the first failure so you get signal fast.
+cd frontend && node_modules/.bin/jest --ci --bail --passWithNoTests
 cd ..
 
 echo "▶ Running backend tests…"

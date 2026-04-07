@@ -52,7 +52,7 @@ jobs:
         run: npm run format:check
 
       - name: Run tests
-        run: npm test -- --ci --coverage
+        run: npm test -- --ci --bail --coverage
         # --ci        disables interactive watch mode and fails on any new
         #             snapshot rather than prompting to update it.
         # --coverage  uploads coverage data (visible in the Actions summary).
