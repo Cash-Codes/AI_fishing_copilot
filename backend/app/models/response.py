@@ -1,0 +1,66 @@
+# models/response.py — Defines the shape of data the API *returns*.
+#
+# Pydantic response models:
+# - Document what the client can expect to receive.
+# - FastAPI uses them to serialise (convert) Python objects → JSON.
+# - They also power the automatic /docs page.
+
+from typing import List, Optional
+
+from pydantic import BaseModel, Field
+
+
+class RecommendResponse(BaseModel):
+    """
+    Body returned by POST /recommend.
+
+    Example JSON:
+        {
+            "input_postcode": "TR1 1AA",
+            "nearest_harbour": "Falmouth Harbour",
+            "recommendation_window": "Saturday 06:00 – 10:00",
+            "confidence_score": 0.82,
+            "explanation": "Tidal flow peaks Saturday morning …",
+            "used_fallback": false,
+            "retrieved_notes": ["Spring tide Saturday", "SW wind 12 knots"]
+        }
+    """
+
+    # The postcode we received — echoed back so the client can confirm
+    input_postcode: str = Field(description="The postcode that was submitted.")
+
+    # Closest harbour found for that postcode
+    nearest_harbour: str = Field(description="Name of the nearest suitable harbour.")
+
+    # Human-readable time window for the best fishing conditions
+    recommendation_window: str = Field(
+        description="Suggested date/time range, e.g. 'Saturday 06:00 – 10:00'."
+    )
+
+    # How confident the AI is in the recommendation (0.0 = low, 1.0 = certain)
+    confidence_score: float = Field(
+        ge=0.0,  # must be >= 0
+        le=1.0,  # must be <= 1
+        description="Confidence level between 0.0 and 1.0.",
+    )
+
+    # Plain-English reason for the recommendation
+    explanation: str = Field(description="AI-generated explanation of the recommendation.")
+
+    # True when live data was unavailable and we fell back to static rules
+    used_fallback: bool = Field(
+        description="Whether fallback logic was used instead of live AI data."
+    )
+
+    # Short notes pulled from the knowledge base (FAISS / vector store)
+    retrieved_notes: List[str] = Field(
+        default_factory=list,  # default to an empty list if nothing is retrieved
+        description="Relevant notes retrieved from the knowledge base.",
+    )
+
+
+class HealthResponse(BaseModel):
+    """Returned by GET /health to confirm the service is running."""
+
+    status: str = Field(examples=["ok"])
+    version: Optional[str] = Field(default=None, examples=["0.1.0"])
