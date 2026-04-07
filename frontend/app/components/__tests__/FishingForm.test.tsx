@@ -16,12 +16,14 @@ import FishingForm from "../FishingForm";
 import { ApiError, type RecommendResponse } from "@/lib/api";
 
 // ─── Mock the API module ───────────────────────────────────────────────────────
-// Jest replaces lib/api with a version where every export is a jest.fn().
-// We keep the real type exports (`RecommendResponse`, `ApiError`) via
-// `jest.requireActual` so TypeScript and runtime checks still work.
+// jest.mock() is hoisted to the top of the file before any transforms run,
+// so @/ path aliases are not reliably resolved at that point. We use a
+// relative path here instead (3 levels up: __tests__ → components → app → lib).
+// Regular `import` statements below can still use @/ — only jest.mock() and
+// jest.requireActual() need relative paths.
 
-jest.mock("@/lib/api", () => ({
-  ...jest.requireActual("@/lib/api"),
+jest.mock("../../../lib/api", () => ({
+  ...jest.requireActual("../../../lib/api"),
   recommend: jest.fn(),
 }));
 
