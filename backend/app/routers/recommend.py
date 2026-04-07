@@ -20,6 +20,7 @@ from fastapi import APIRouter
 
 from app.models.request import RecommendRequest
 from app.models.response import RecommendResponse
+from app.services.conditions import get_conditions
 from app.services.harbour import default_harbour, nearest_harbour
 from app.services.postcode import resolve_postcode
 from app.services.scoring import score_recommendation
@@ -75,7 +76,10 @@ def get_recommendation(body: RecommendRequest) -> RecommendResponse:
         )
         harbour, distance_km = default_harbour()
 
-    # ── Step 2: score the recommendation ─────────────────────────────────────
+    # ── Step 2: fetch live conditions (weather + tides) ───────────────────────
+    conditions = get_conditions(harbour)
+
+    # ── Step 3: score the recommendation ──────────────────────────────────────
     score = score_recommendation(
         distance_km=distance_km,
         harbour=harbour,
@@ -91,9 +95,9 @@ def get_recommendation(body: RecommendRequest) -> RecommendResponse:
         score.confidence_score,
     )
 
-    # ── Step 3: build response ────────────────────────────────────────────────
-    # The explanation and time window are still placeholder text.
-    # They will be replaced by a real AI call in a later iteration.
+    # ── Step 4: build response ────────────────────────────────────────────────
+    # The explanation text is still template-based.
+    # A future iteration will replace this with a real AI-generated narrative.
 
     distance_note = (
         f"{distance_km:.0f} km from {body.postcode}"
@@ -104,22 +108,39 @@ def get_recommendation(body: RecommendRequest) -> RecommendResponse:
     explanation = (
         f"{harbour.name} is your nearest harbour ({distance_note}). "
         f"{harbour.short_description} "
+        f"Conditions today: {conditions.conditions_summary} "
         f"Targeting {body.species or 'general sea fishing'} with a preference "
         f'for "{body.preference}".'
     )
 
-    mock_notes = [
-        "Spring tide Saturday — strong tidal flow, good for Bass.",
-        "SW wind 12 knots — manageable conditions near the headland.",
-        "Water temperature 14 °C — Bass actively feeding.",
+    retrieved_notes = [
+        f"{conditions.tide_phase} tide ({conditions.spring_or_neap.lower()}, "
+        f"coefficient {conditions.tidal_coefficient:.2f}) — "
+        + ("strong tidal flow expected." if conditions.tidal_coefficient > 0.7
+           else "moderate tidal flow."),
+        f"{conditions.wind_description} ({conditions.wind_speed_knots:.0f} kn "
+        f"{conditions.wind_direction}) — "
+        + ("conditions are challenging." if conditions.wind_speed_knots > 20
+           else "manageable conditions near the headland."),
+        f"{conditions.sea_state} swell ({conditions.wave_height_m:.1f} m). "
+        f"Next high water at {conditions.next_high_water}.",
     ]
 
     return RecommendResponse(
         input_postcode=body.postcode,
         nearest_harbour=harbour.name,
-        recommendation_window="Saturday 06:00 – 10:00",
+        recommendation_window=conditions.recommended_time_window,
         confidence_score=score.confidence_score,
         explanation=explanation,
         used_fallback=used_fallback,
-        retrieved_notes=mock_notes,
+        retrieved_notes=retrieved_notes,
+        # Conditions fields
+        wind_speed_knots=conditions.wind_speed_knots,
+        wind_direction=conditions.wind_direction,
+        wind_description=conditions.wind_description,
+        wave_height_m=conditions.wave_height_m,
+        sea_state=conditions.sea_state,
+        tide_phase=conditions.tide_phase,
+        spring_or_neap=conditions.spring_or_neap,
+        conditions_summary=conditions.conditions_summary,
     )
