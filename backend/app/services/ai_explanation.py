@@ -1,27 +1,25 @@
 # services/ai_explanation.py — AI-generated recommendation explanations via Vertex AI.
 #
-# Reads three environment variables (no secrets in code):
-#   GOOGLE_CLOUD_PROJECT   — GCP project ID (required to enable AI generation)
+# Configuration is read from app.settings (which sources environment variables):
+#   ENABLE_VERTEX_AI       — master on/off switch (default: true)
+#   GOOGLE_CLOUD_PROJECT   — GCP project ID (required when AI is enabled)
 #   GOOGLE_CLOUD_REGION    — Vertex AI region  (default: "us-central1")
-#   VERTEX_AI_MODEL        — Gemini model ID   (default: "gemini-2.0-flash")
+#   VERTEX_AI_MODEL        — Gemini model ID   (default: "gemini-2.5-flash")
 #
 # Authentication is handled by the Google SDK via Application Default Credentials
 # (ADC).  Locally: `gcloud auth application-default login` or set
 # GOOGLE_APPLICATION_CREDENTIALS to the path of a service account key file.
 # In production on GCP: no extra config needed — the instance identity is used.
 #
-# If GOOGLE_CLOUD_PROJECT is unset, or if the Vertex AI call fails for any
-# reason (quota, network error, bad credentials, etc.), the module returns a
-# template-based explanation and sets used_ai=False.  The recommendation
-# endpoint then marks used_fallback=True in the response so the client knows.
-#
-# Swapping models:  change VERTEX_AI_MODEL in your .env.  Any Gemini model
-# available in your project and region will work without code changes.
+# If AI is disabled or GOOGLE_CLOUD_PROJECT is unset, or if the Vertex AI call
+# fails for any reason, the module returns a template explanation (used_ai=False).
+# The recommendation endpoint marks used_fallback=True so the client knows.
 
 import logging
-import os
 from dataclasses import dataclass
 from typing import List, Optional
+
+from app.settings import get_settings
 
 logger = logging.getLogger(__name__)
 
@@ -34,8 +32,6 @@ try:
     _VERTEXAI_AVAILABLE = True
 except ImportError:  # pragma: no cover
     _VERTEXAI_AVAILABLE = False
-
-_DEFAULT_MODEL = "gemini-2.0-flash"
 
 
 # ─── Input / output types ─────────────────────────────────────────────────────
@@ -134,12 +130,13 @@ def _template_explanation(ctx: ExplanationContext) -> ExplanationResult:
 
 def _vertex_generate(ctx: ExplanationContext) -> ExplanationResult:
     """Call Vertex AI Gemini.  Raises on any failure — caller handles fallback."""
-    project  = os.environ["GOOGLE_CLOUD_PROJECT"]
-    location = os.getenv("GOOGLE_CLOUD_REGION", "us-central1")
-    model_id = os.getenv("VERTEX_AI_MODEL", _DEFAULT_MODEL)
+    settings = get_settings()
 
-    vertexai.init(project=project, location=location)
-    model = GenerativeModel(model_id)
+    vertexai.init(
+        project=settings.google_cloud_project,
+        location=settings.google_cloud_region,
+    )
+    model = GenerativeModel(settings.vertex_ai_model)
 
     prompt = _build_prompt(ctx)
     response = model.generate_content(
@@ -157,7 +154,7 @@ def _vertex_generate(ctx: ExplanationContext) -> ExplanationResult:
 
     logger.info(
         "Vertex AI explanation | model=%s | ~%d words",
-        model_id, len(text.split()),
+        settings.vertex_ai_model, len(text.split()),
     )
     return ExplanationResult(text=text, used_ai=True)
 
@@ -168,15 +165,22 @@ def generate_explanation(ctx: ExplanationContext) -> ExplanationResult:
     """Generate a recommendation explanation, with automatic fallback.
 
     Resolution order:
-      1. If GOOGLE_CLOUD_PROJECT is not set → template (no network call made)
+      1. ENABLE_VERTEX_AI=false or GOOGLE_CLOUD_PROJECT unset → template
       2. Call Vertex AI Gemini → return AI text
       3. On any exception → log warning, return template
 
     The caller is responsible for reflecting used_ai=False as used_fallback=True
     in the API response when that behaviour is desired.
     """
-    if not os.getenv("GOOGLE_CLOUD_PROJECT"):
-        logger.debug("GOOGLE_CLOUD_PROJECT not set — using template explanation")
+    settings = get_settings()
+
+    if not settings.vertex_ai_ready:
+        reason = (
+            "ENABLE_VERTEX_AI=false"
+            if not settings.enable_vertex_ai
+            else "GOOGLE_CLOUD_PROJECT not set"
+        )
+        logger.debug("Skipping Vertex AI (%s) — using template explanation", reason)
         return _template_explanation(ctx)
 
     try:
