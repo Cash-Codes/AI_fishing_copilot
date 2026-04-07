@@ -1,0 +1,1 @@
+AI powered fishing recommendation system using Vertex AI, RAG and hybrid recommendation logic - in progress
