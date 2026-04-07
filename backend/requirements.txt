@@ -1,0 +1,9 @@
+# ── Web framework ─────────────────────────────────────────────────────────────
+fastapi==0.115.12        # The web framework — handles routing, validation, docs
+uvicorn[standard]==0.34.0  # ASGI server — runs the FastAPI app locally
+
+# ── Validation ────────────────────────────────────────────────────────────────
+pydantic==2.11.3         # Data validation — FastAPI uses this for request/response models
+
+# ── Environment ───────────────────────────────────────────────────────────────
+python-dotenv==1.1.0     # Loads .env files so we can read environment variables
