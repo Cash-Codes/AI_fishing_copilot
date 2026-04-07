@@ -13,17 +13,15 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import FishingForm from "../FishingForm";
-import { ApiError, type RecommendResponse } from "../../../lib/api";
+import { ApiError, type RecommendResponse } from "@/lib/api";
 
 // ─── Mock the API module ───────────────────────────────────────────────────────
-// jest.mock() is hoisted to the top of the file before any transforms run,
-// so @/ path aliases are not reliably resolved at that point. We use a
-// relative path here instead (3 levels up: __tests__ → components → app → lib).
-// Regular `import` statements below can still use @/ — only jest.mock() and
-// jest.requireActual() need relative paths.
+// jest.mock() is safe to use with @/ here because jest.config.ts maps
+// @/lib/api with an exact-match entry (no $1 capture group), which resolves
+// correctly in all environments including CI and coverage mode.
 
-jest.mock("../../../lib/api", () => ({
-  ...jest.requireActual("../../../lib/api"),
+jest.mock("@/lib/api", () => ({
+  ...jest.requireActual("@/lib/api"),
   recommend: jest.fn(),
 }));
 

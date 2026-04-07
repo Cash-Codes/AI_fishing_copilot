@@ -9,7 +9,7 @@
 import { render, screen, within } from "@testing-library/react";
 
 import ResultsPanel from "../ResultsPanel";
-import type { RecommendResponse } from "../../../lib/api";
+import type { RecommendResponse } from "@/lib/api";
 
 // ─── Fixtures ─────────────────────────────────────────────────────────────────
 

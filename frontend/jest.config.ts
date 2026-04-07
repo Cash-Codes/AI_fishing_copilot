@@ -6,19 +6,12 @@
  * - Mocks CSS imports, images, and next/font automatically.
  * - Loads .env files into process.env.
  *
- * Why moduleNameMapper is defined here instead of relying on next/jest:
- *
- * next/jest auto-generates a moduleNameMapper entry for `@/*` from tsconfig
- * paths, but it uses array form (["<rootDir>/$1"]). jest.mock() calls are
- * hoisted before module resolution and don't handle array-form mappers
- * correctly in some environments. Defining the string form here overrides
- * next/jest's generated entry so both regular imports and jest.mock() resolve
- * the alias consistently.
- *
- * Note: jest.mock() calls in tests should always use relative paths
- * (e.g. "../../lib/api") rather than @/ aliases. jest.mock() is hoisted
- * to the top of the file before any transforms run, making alias resolution
- * unreliable regardless of config. Regular imports can use @/ freely.
+ * moduleNameMapper note:
+ * next/jest auto-generates a @/* entry from tsconfig paths in array form
+ * (["<rootDir>/$1"]). Array form works for regular imports but the $1
+ * capture group is not substituted when jest.mock() resolves the path in
+ * some environments (CI, coverage mode). We override with exact-match
+ * entries — no capture groups, no $1, nothing to break.
  */
 import type { Config } from "jest";
 import nextJest from "next/jest.js";
@@ -28,11 +21,12 @@ const createJestConfig = nextJest({ dir: "./" });
 const config: Config = {
   testEnvironment: "jsdom",
   setupFilesAfterEnv: ["<rootDir>/jest.setup.ts"],
-  // moduleNameMapper is intentionally omitted for @/ aliases.
-  // next/jest auto-generates it from tsconfig.json paths — that entry works
-  // for regular imports in source and test files. Test files avoid @/ imports
-  // entirely (using relative paths instead) so jest.mock() hoisting never
-  // needs to resolve through the mapper.
+  moduleNameMapper: {
+    // Exact match for every @/ path used in tests and source files.
+    // Exact matches have no capture groups so there is no $1 substitution —
+    // the most common source of jest.mock() resolution failures in CI.
+    "^@/lib/api$": "<rootDir>/lib/api",
+  },
   testPathIgnorePatterns: ["<rootDir>/node_modules/", "<rootDir>/.next/"],
   collectCoverageFrom: ["app/**/*.{ts,tsx}", "lib/**/*.{ts,tsx}", "!**/*.d.ts"],
 };
