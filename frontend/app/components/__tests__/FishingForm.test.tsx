@@ -13,7 +13,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import FishingForm from "../FishingForm";
-import { ApiError, type RecommendResponse } from "@/lib/api";
+import { ApiError, type RecommendResponse } from "../../../lib/api";
 
 // ─── Mock the API module ───────────────────────────────────────────────────────
 // jest.mock() is hoisted to the top of the file before any transforms run,

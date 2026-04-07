@@ -28,11 +28,11 @@ const createJestConfig = nextJest({ dir: "./" });
 const config: Config = {
   testEnvironment: "jsdom",
   setupFilesAfterEnv: ["<rootDir>/jest.setup.ts"],
-  moduleNameMapper: {
-    // String form overrides next/jest's array form for this key.
-    // Must be defined here so the override is applied synchronously.
-    "^@/(.*)$": "<rootDir>/$1",
-  },
+  // moduleNameMapper is intentionally omitted for @/ aliases.
+  // next/jest auto-generates it from tsconfig.json paths — that entry works
+  // for regular imports in source and test files. Test files avoid @/ imports
+  // entirely (using relative paths instead) so jest.mock() hoisting never
+  // needs to resolve through the mapper.
   testPathIgnorePatterns: ["<rootDir>/node_modules/", "<rootDir>/.next/"],
   collectCoverageFrom: ["app/**/*.{ts,tsx}", "lib/**/*.{ts,tsx}", "!**/*.d.ts"],
 };
