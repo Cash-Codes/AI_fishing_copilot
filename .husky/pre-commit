@@ -1,0 +1,4 @@
+# Run lint-staged for the frontend on every commit.
+# Use node_modules/.bin directly — husky runs with a stripped PATH that
+# doesn't include npx, nvm, or Homebrew binaries.
+cd frontend && node_modules/.bin/lint-staged
